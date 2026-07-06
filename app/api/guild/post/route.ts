@@ -7,12 +7,22 @@ const UNAVAILABLE = NextResponse.json({ error: 'GUILD_UNAVAILABLE' }, { status: 
 // 敏感詞最小清單
 const SENSITIVE_WORDS = ['色情', '賭博', '詐騙', '援交', '開槍', '炸彈', 'fuck', 'shit'];
 
-// 聯絡方式 pattern（手機號、LINE ID）
+// 聯絡方式 pattern：目標是擋「在公開版留下可被私下聯絡的帳號」，
+// 但放行單純提及平台的正常討論（例：「我在 LINE 群看到」「用 IG 經營品牌」）。
 const CONTACT_PATTERNS = [
-  /09\d{8}/,
-  /line\s*[id：:]\s*\S+/i,
-  /line\.me\/ti\/p\//i,
-  /linetc|lineid/i,
+  // 手機號（容許 - 或空白分隔）：0912345678 / 0912-345-678 / 0912 345 678
+  /09\d{2}[\s-]?\d{3}[\s-]?\d{3}/,
+  // LINE 帳號索取：line id/：帳號、line 直接接帳號、line.me 連結、賴/加賴/賴我/賴 + 帳號
+  /line\s*(?:id|＠|@|[：:])?\s*[a-z0-9._-]{3,}/i,
+  /line\.me\/(?:ti\/p|R\/)/i,
+  /(?:賴|加賴|賴我|給賴|密賴)\s*(?:id|：|:|＠|@)?\s*[a-z0-9._-]{2,}/i,
+  // IG / instagram 帳號索取（@帳號 或 明講私訊索取），放行單純提到 ig
+  /(?:ig|instagram|限動)\s*(?:id|：|:|＠|@)?\s*@?[a-z0-9._]{3,}/i,
+  // 其他即時通：微信/wechat、telegram/tg、whatsapp、skype、discord + 帳號
+  /(?:微信|wechat|威信)\s*(?:id|：|:)?\s*[a-z0-9._-]{3,}/i,
+  /(?:telegram|tg|whatsapp|skype|discord)\s*(?:id|：|:|＠|@)?\s*[a-z0-9._@-]{3,}/i,
+  // 明講索取/給予聯絡方式：加我/密我/私我/聯絡我 + 賴/line/ig/微信/電話
+  /(?:加我|密我|私我|聯絡我|傳我|寄我)\s*(?:的)?\s*(?:賴|line|ig|微信|wechat|電話|手機|信箱|email|mail)/i,
 ];
 
 function containsContact(text: string): boolean {
