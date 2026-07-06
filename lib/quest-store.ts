@@ -44,7 +44,7 @@ function defaultQuest(): QuestData {
 
 // Level thresholds: Lv1-7
 export const LEVEL_THRESHOLDS = [0, 100, 300, 700, 1500, 3000, 6000];
-export const LEVEL_NAMES = ['探索新手', '初心踏步', '蓄勢待發', '履歷強化', '全力衝刺', '職涯老手', '傳奇前輩'];
+export const LEVEL_NAMES = ['職涯新手村村民', '履歷工坊學徒', '技能訓練生', '投遞小勇者', '面試挑戰者', '實習通關者', '職涯分享官'];
 
 export function getLevel(points: number): { level: number; name: string; nextAt: number | null } {
   let lv = 0;
@@ -126,7 +126,7 @@ function generateId(): string {
 }
 
 // Badge definitions
-const BADGES = [
+export const BADGES = [
   { id: 'onboarding', name: '啟程', check: (d: QuestData) => d.profile !== null },
   { id: 'resume_first', name: '履歷啟動', check: (d: QuestData) => d.analysis !== null },
   { id: 'review_explore', name: '心得探索', check: (d: QuestData) => (d.tasks['read_review_3roles']?.count ?? 0) >= 1 || (d.tasks['read_target_3']?.count ?? 0) >= 1 || (d.tasks['learn_resource']?.count ?? 0) >= 10 },

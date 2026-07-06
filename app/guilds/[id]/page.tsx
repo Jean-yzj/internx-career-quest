@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
+import Mascot from '@/components/Mascot';
 import { GUILD_DEFS } from '@/lib/guilds';
 import { award } from '@/lib/quest-store';
 
@@ -326,9 +327,10 @@ export default function GuildDetailPage() {
         <SiteNav activePath="/guilds" />
         <main className="site-main" id="main-content">
           <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <p style={{ fontSize: '1rem', fontWeight: 600 }}>公會整修中</p>
+            <div style={{ margin: '0 auto 16px', display: 'inline-block' }}><Mascot size={64} variant="think" className="mascot-idle" /></div>
+            <p style={{ fontSize: '1rem', fontWeight: 700 }}>公會整修中</p>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginTop: 8 }}>先去做今天的任務</p>
-            <a href="/island" className="btn-primary" style={{ display: 'inline-block', marginTop: 20 }}>回到闖關島</a>
+            <a href="/island" className="btn-game" style={{ display: 'inline-flex', marginTop: 20 }}>回到闖關島</a>
           </div>
         </main>
         <Footer />
@@ -353,7 +355,7 @@ export default function GuildDetailPage() {
               {memberCount >= 10 && <span style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>{memberCount} 成員</span>}
               <span style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>{postCount} 則討論</span>
               {!isJoined && (
-                <button type="button" className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.875rem' }} onClick={handleJoinOnly}>
+                <button type="button" className="btn-game-teal" style={{ padding: '8px 18px', fontSize: '0.875rem' }} onClick={handleJoinOnly}>
                   加入公會
                 </button>
               )}
@@ -394,7 +396,8 @@ export default function GuildDetailPage() {
             value={postContent}
             onChange={(e) => setPostContent(e.target.value)}
             maxLength={500}
-            style={{ width: '100%', resize: 'vertical', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 12px', fontSize: '1rem', fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none' }}
+            className="field-guild-post"
+            style={{ width: '100%', resize: 'vertical', border: '1.5px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: '1rem', fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none', transition: 'border-color .12s, box-shadow .12s' }}
             onFocus={() => {
               if (!getNickname()) {
                 setShowNicknameModal(true);
@@ -406,8 +409,8 @@ export default function GuildDetailPage() {
             {postError && <span style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>{postError}</span>}
             <button
               type="button"
-              className="btn-primary"
-              style={{ padding: '6px 16px', fontSize: '0.875rem' }}
+              className="btn-game-teal"
+              style={{ padding: '7px 16px', fontSize: '0.875rem' }}
               onClick={() => ensureNicknameAndJoined(handlePost)}
               disabled={postSubmitting}
             >
@@ -509,35 +512,43 @@ function PostCard({
   const isOfficial = post.official;
   const isOwn = post.device_id === currentDeviceId;
 
+  // Official posts rendered as bubble with mascot
+  if (isOfficial) {
+    return (
+      <div className="guild-bubble-post">
+        <div className="guild-bubble-avatar">
+          <Mascot size={28} variant="happy" />
+        </div>
+        <div className="guild-bubble-content">
+          <div className="guild-bubble-name">
+            藍藍教練
+            <span style={{ marginLeft: 8, fontSize: '0.6875rem', background: 'var(--brand)', color: '#fff', borderRadius: 10, padding: '2px 8px', fontWeight: 700 }}>官方</span>
+            <span style={{ marginLeft: 8, fontSize: '0.75rem', color: 'var(--ink-2)', fontWeight: 400 }}>{formatTime(post.created_at)}</span>
+          </div>
+          <p style={{ fontSize: '0.9375rem', color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="card" style={{ padding: '14px 16px', borderLeft: isOfficial ? '3px solid var(--brand)' : undefined }}>
+    <div className="card" style={{ padding: '14px 16px' }}>
       {/* Post header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <div style={{
           width: 32, height: 32, borderRadius: '50%',
-          background: isOfficial ? 'var(--brand)' : 'var(--island-sand)',
+          background: 'var(--sky-soft)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
+          border: '1.5px solid var(--line)',
         }}>
-          {isOfficial ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="8" r="7" fill="#fff" opacity=".2"/>
-              <path d="M5 8l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="5.5" r="2.5" stroke="#7A5C00" strokeWidth="1.5"/>
-              <path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#7A5C00" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          )}
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="5.5" r="2.5" stroke="var(--brand)" strokeWidth="1.5"/>
+            <path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontWeight: 600, fontSize: '0.875rem', color: isOfficial ? 'var(--brand)' : 'var(--ink)' }}>
-            {post.nickname}
-            {isOfficial && (
-              <span style={{ marginLeft: 6, fontSize: '0.75rem', background: 'var(--brand)', color: '#fff', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>藍藍教練</span>
-            )}
-          </span>
+          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--ink)' }}>{post.nickname}</span>
         </div>
         <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{formatTime(post.created_at)}</span>
       </div>

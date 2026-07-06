@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
+import Mascot from '@/components/Mascot';
 import { ROLES } from '@/lib/roles';
 import { loadQuest, saveQuest, award } from '@/lib/quest-store';
 import type { ResumeAnalysisResult } from '@/lib/types';
@@ -22,6 +23,58 @@ const DIM_LABELS: Record<string, string> = {
   credibility: '可信度',
   industry_fit: '行業適合',
 };
+
+function RadarSVGStyled({ dims }: { dims: Record<string, number> }) {
+  const keys = Object.keys(dims);
+  const n = keys.length;
+  const cx = 100, cy = 100, r = 75;
+  const pts = keys.map((_, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    const val = (dims[keys[i]] ?? 1) / 5;
+    return { x: cx + r * val * Math.cos(angle), y: cy + r * val * Math.sin(angle) };
+  });
+  const gridPts = keys.map((_, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+  const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
+  return (
+    <svg viewBox="0 0 200 200" width="200" height="200" aria-label="六維雷達圖">
+      {[0.2, 0.4, 0.6, 0.8, 1].map((scale) => {
+        const scalePts = keys.map((_, i) => {
+          const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+          return `${cx + r * scale * Math.cos(angle)},${cy + r * scale * Math.sin(angle)}`;
+        }).join(' ');
+        return <polygon key={scale} points={scalePts} fill="none" stroke="var(--line)" strokeWidth="0.8" />;
+      })}
+      {gridPts.map((p, i) => (
+        <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--line)" strokeWidth="0.8" />
+      ))}
+      {/* gradient fill */}
+      <defs>
+        <linearGradient id="radar-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#4DA3FF" stopOpacity="0.35"/>
+          <stop offset="100%" stopColor="#0182FD" stopOpacity="0.18"/>
+        </linearGradient>
+      </defs>
+      <polygon points={polyline} fill="url(#radar-grad)" stroke="#0182FD" strokeWidth="2" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="4" fill="#0182FD" />
+      ))}
+      {keys.map((k, i) => {
+        const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+        const lx = cx + (r + 18) * Math.cos(angle);
+        const ly = cy + (r + 18) * Math.sin(angle);
+        const textAnchor = Math.abs(lx - cx) < 10 ? 'middle' : lx < cx ? 'end' : 'start';
+        return (
+          <text key={k} x={lx} y={ly + 4} textAnchor={textAnchor} fill="var(--ink-2)" fontSize="9" fontWeight="600">
+            {DIM_LABELS[k] ?? k}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
 
 function RadarSVG({ dims }: { dims: Record<string, number> }) {
   const keys = Object.keys(dims);
@@ -183,8 +236,22 @@ export default function AnalysisPage() {
           )}
 
           {phase === 'loading' && (
-            <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-              <p style={{ fontSize: '1rem', color: 'var(--ink-2)' }}>分析中，請稍候（約 10-20 秒）…</p>
+            <div className="card">
+              <div className="analysis-loading">
+                <div className="mascot-bob">
+                  <Mascot size={72} variant="think" />
+                </div>
+                <div>
+                  <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>藍藍正在讀你的履歷...</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)' }}>約 10-20 秒，請稍候</p>
+                </div>
+                {/* 3-stage loading text */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+                  {['解析內容', '比對職位', '生成建議'].map((s, i) => (
+                    <span key={i} style={{ fontSize: '0.8125rem', background: 'var(--sky-soft)', color: 'var(--sky-deep)', border: '1.5px solid var(--sky)', borderRadius: 99, padding: '3px 10px', fontWeight: 600 }}>{s}</span>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -208,14 +275,19 @@ export default function AnalysisPage() {
           {phase === 'result' && result && (
             <>
               {/* Overall score */}
-              <div className="card" style={{ marginBottom: 16, textAlign: 'center' }}>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)', marginBottom: 4 }}>整體評分</p>
-                <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--brand)' }}>
-                  {result.overall}
-                  <span style={{ fontSize: '1.25rem', color: 'var(--ink-2)' }}>/100</span>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginTop: 4 }}>
-                  信心度：{result.confidence === 'high' ? '高' : result.confidence === 'medium' ? '中' : '低'}
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="result-medal-wrap">
+                  <Mascot size={60} variant="cheer" className="mascot-idle" />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <div className="result-medal" style={{ width: 70, height: 70, fontSize: '1.5rem' }}>
+                      {result.overall}
+                    </div>
+                    <div style={{ marginTop: 12 }} />
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>整體評分（滿分 100）</p>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)' }}>
+                      信心度：{result.confidence === 'high' ? '高' : result.confidence === 'medium' ? '中' : '低'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -223,7 +295,7 @@ export default function AnalysisPage() {
               <div className="card" style={{ marginBottom: 16 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>六維分析</h3>
                 <div className="radar-container">
-                  <RadarSVG dims={result.dimensions} />
+                  <RadarSVGStyled dims={result.dimensions} />
                 </div>
                 <div className="dimension-bars">
                   {Object.entries(result.dimensions).map(([k, v]) => (
@@ -294,7 +366,7 @@ export default function AnalysisPage() {
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="/island" className="btn-primary">查看推薦任務</a>
+                <a href="/island" className="btn-game">查看推薦任務</a>
                 <button type="button" className="btn-ghost" onClick={() => { setPhase('input'); setResult(null); }}>
                   重新分析
                 </button>

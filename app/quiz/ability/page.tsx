@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
+import Mascot from '@/components/Mascot';
 import { ABILITY_QUESTIONS, computeDimensionScores, getAbilityLevel, getWeakestDimensions, DIMENSION_LABELS, ABILITY_LEVEL_LABELS } from '@/lib/ability-quiz';
 import { loadQuest, saveQuest, award } from '@/lib/quest-store';
 import { getRoleById, ROLES } from '@/lib/roles';
@@ -79,9 +80,10 @@ export default function AbilityQuizPage() {
                   key={r.id}
                   type="button"
                   onClick={() => handleRoleSelect(r.id)}
-                  style={{ padding: '14px 12px', borderRadius: 'var(--radius)', border: '2px solid var(--line)', background: 'var(--card)', textAlign: 'left', cursor: 'pointer', transition: 'all 0.12s' }}
+                  className="card card-hover"
+                  style={{ textAlign: 'left', cursor: 'pointer' }}
                 >
-                  <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{r.name}</div>
+                  <div style={{ fontWeight: 700, color: 'var(--ink)' }}>{r.name}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)', marginTop: 2 }}>{r.shortName}</div>
                 </button>
               ))}
@@ -107,10 +109,12 @@ export default function AbilityQuizPage() {
             <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)', marginBottom: 16 }}>
               依據實際情況回答，是(2)／部分(1)／否(0)
             </p>
-            <div className="quiz-progress-bar">
-              <div className="quiz-progress-fill" style={{ width: `${(answered / 10) * 100}%` }} />
+            <div className="quiz-progress-segments" aria-label={`第 ${current + 1} 題，共 10 題`}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className={`quiz-seg${i < answered ? ' quiz-seg-done' : i === current ? ' quiz-seg-current' : ''}`} />
+              ))}
             </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--ink-2)', textAlign: 'right', marginBottom: 20 }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--ink-2)', textAlign: 'right', marginBottom: 18 }}>
               {answered}/10
             </p>
             <div className="quiz-question">
@@ -157,13 +161,14 @@ export default function AbilityQuizPage() {
       <SiteNav activePath="/quiz/ability" />
       <main className="site-main" id="main-content">
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <div className="card" style={{ marginBottom: 20, textAlign: 'center' }}>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)', marginBottom: 4 }}>{role?.name} 能力測驗結果</p>
-            <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--brand)', marginBottom: 6 }}>
-              {score}<span style={{ fontSize: '1.25rem', color: 'var(--ink-2)' }}>/20</span>
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="result-medal-wrap">
+              <Mascot size={68} variant="cheer" className="mascot-idle" />
+              <div className="result-medal" style={{ fontSize: '1.25rem' }}>{score}<span style={{ fontSize: '0.75rem', fontWeight: 600 }}>/20</span></div>
+              <div style={{ marginTop: 12 }} />
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{role?.name}｜{levelInfo.label}</h2>
+              <p style={{ fontSize: '0.9375rem', color: 'var(--ink-2)', lineHeight: 1.6, textAlign: 'center', maxWidth: 360 }}>{levelInfo.desc}</p>
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>{levelInfo.label}</h2>
-            <p style={{ fontSize: '0.9375rem', color: 'var(--ink-2)', lineHeight: 1.6 }}>{levelInfo.desc}</p>
           </div>
 
           <div className="card" style={{ marginBottom: 20 }}>
@@ -192,7 +197,7 @@ export default function AbilityQuizPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/island" className="btn-primary" style={{ flex: 1 }}>查看推薦任務</a>
+            <a href="/island" className="btn-game" style={{ flex: 1 }}>查看推薦任務</a>
             <button type="button" className="btn-ghost" onClick={() => setPhase('select')}>
               換職位測驗
             </button>

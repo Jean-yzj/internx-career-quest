@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
+import Mascot from '@/components/Mascot';
 import { GUILD_DEFS, type GuildDef } from '@/lib/guilds';
 
 const DB_UNAVAILABLE_MSG = '公會整修中，先去做今天的任務';
@@ -54,13 +55,10 @@ export default function GuildsPage() {
         <SiteNav activePath="/guilds" />
         <main className="site-main" id="main-content">
           <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true" style={{ margin: '0 auto 16px', display: 'block', opacity: 0.4 }}>
-              <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2"/>
-              <path d="M24 14v10l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ink)' }}>公會整修中</p>
+            <div style={{ margin: '0 auto 16px', display: 'inline-block' }}><Mascot size={64} variant="think" className="mascot-idle" /></div>
+            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--ink)' }}>公會整修中</p>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginTop: 8 }}>{DB_UNAVAILABLE_MSG}</p>
-            <a href="/island" className="btn-primary" style={{ display: 'inline-block', marginTop: 20 }}>回到闖關島</a>
+            <a href="/island" className="btn-game" style={{ display: 'inline-flex', marginTop: 20 }}>回到闖關島</a>
           </div>
         </main>
         <Footer />
@@ -104,22 +102,31 @@ function GuildCard({ guild, isJoined, stats }: { guild: GuildDef; isJoined: bool
   const memberCount = stats?.memberCount ?? 0;
 
   return (
-    <a href={`/guilds/${guild.id}`} className="zone-card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ width: 44, height: 44, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: guild.badge }} />
+    <a href={`/guilds/${guild.id}`} className="zone-card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', textDecoration: 'none', color: 'inherit' }}>
+      {/* badge with medal ring */}
+      <div style={{
+        width: 50, height: 50, flexShrink: 0, borderRadius: '50%',
+        border: `3px solid ${guild.accentColor}`,
+        background: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', boxShadow: `0 3px 8px ${guild.accentColor}33`,
+      }}>
+        <div style={{ width: 40, height: 40 }} dangerouslySetInnerHTML={{ __html: guild.badge }} />
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{guild.name}</span>
+          <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{guild.name}</span>
           {isJoined && (
-            <span style={{ fontSize: '0.75rem', background: 'var(--brand)', color: '#fff', borderRadius: 10, padding: '1px 8px', fontWeight: 600 }}>已加入</span>
+            <span style={{ fontSize: '0.75rem', background: 'var(--teal)', color: '#fff', borderRadius: 10, padding: '2px 9px', fontWeight: 700 }}>已加入</span>
           )}
         </div>
         <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guild.tagline}</p>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         {memberCount >= 10 && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{memberCount} 人</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)', marginBottom: 2 }}>{memberCount} 人</div>
         )}
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ color: 'var(--ink-2)', marginTop: 4 }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ color: 'var(--ink-2)' }}>
           <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>
