@@ -50,7 +50,18 @@ export default function PrivacyPage() {
           <li><strong>Zeabur：</strong>伺服器代管服務，提供基礎設施（新加坡節點）。</li>
         </ul>
 
-        <h2>4a. 公會功能的資料處理</h2>
+        <h2>4a. 個人檔案與排行榜功能</h2>
+        <p><strong>個人檔案功能須使用後端資料庫：</strong>當你完成闖關啟程（onboarding）時，以下資訊會儲存至我們的伺服器（PostgreSQL 資料庫）：</p>
+        <ul>
+          <li><strong>暱稱與頭像：</strong>你在設定個人檔案時自訂的暱稱（2–12 字）與頭像編號。</li>
+          <li><strong>年級與目標職位：</strong>你填寫的年級與目標職位，用於推薦關卡路線。</li>
+          <li><strong>點數摘要：</strong>累積點數（totalPoints）、等級（level）、連續天數（streak）與徽章數，用於排行榜顯示。點數明細存在你的裝置，不上傳至伺服器。</li>
+          <li><strong>裝置識別碼：</strong>瀏覽器產生的隨機 ID（deviceId），僅用於識別你的操作裝置，不對應真實身分。</li>
+        </ul>
+        <p><strong>排行榜公開顯示：</strong>你的暱稱、頭像、等級與點數對所有使用者公開顯示於排行榜頁面（/profile）。</p>
+        <p><strong>刪除請求：</strong>若你希望刪除個人檔案與排行榜資料，請寄信至 <a href="mailto:internx.me@gmail.com">internx.me@gmail.com</a>，說明你的暱稱及請求內容，我們將於合理期間內處理。</p>
+
+        <h2>4b. 公會功能的資料處理</h2>
         <p><strong>公會功能須使用後端資料庫：</strong>當你使用公會功能時，以下資訊會儲存至我們的伺服器（PostgreSQL 資料庫）：</p>
         <ul>
           <li><strong>暱稱：</strong>你在設定公會身分時自訂的暱稱（2–12 字）。</li>

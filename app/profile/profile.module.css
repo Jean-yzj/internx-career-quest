@@ -1,0 +1,209 @@
+/* profile.module.css */
+
+/* Character card */
+.charCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 0 rgba(15,91,189,.06);
+}
+
+.charInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nickname {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Stats row */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.statBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 8px;
+  box-shadow: 0 3px 0 rgba(15,91,189,.05);
+}
+
+.statVal {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.statLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* Leaderboard */
+.lbRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+
+.lbRow:hover {
+  background: var(--sky-soft);
+}
+
+.lbRowSelf {
+  background: var(--sky-soft);
+  border: 1.5px solid var(--brand);
+  border-radius: var(--radius-sm);
+  padding: 8px 8px;
+  margin: 4px 0;
+}
+
+.lbRank {
+  min-width: 28px;
+  display: flex;
+  justify-content: center;
+}
+
+.medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 2px solid currentColor;
+}
+
+.rankNum {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  min-width: 24px;
+  text-align: center;
+}
+
+.lbNickname {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lbPoints {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--sand-deep);
+  white-space: nowrap;
+}
+
+.lbDivider {
+  border: none;
+  border-top: 1.5px dashed var(--line);
+  margin: 8px 0;
+}
+
+.lbCaption {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  text-align: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+/* Ledger */
+.ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ledgerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+.ledgerRow:last-child {
+  border-bottom: none;
+}
+
+.ledgerReason {
+  color: var(--ink);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.ledgerDelta {
+  font-weight: 700;
+  color: var(--sand-deep);
+  white-space: nowrap;
+}
+
+/* Settings */
+.settingRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.settingLabel {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+/* No profile banner */
+.noProfileBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, var(--sky-soft), #fff);
+  border: 2px solid var(--brand);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}

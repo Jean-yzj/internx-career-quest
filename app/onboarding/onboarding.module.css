@@ -1,0 +1,276 @@
+/* onboarding.module.css */
+
+.stepTitle {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.stepDesc {
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+  margin-bottom: 24px;
+}
+
+/* Segmented progress bar */
+.segBar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.seg {
+  flex: 1;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+
+.segDone {
+  background: linear-gradient(90deg, var(--sky), var(--brand));
+}
+
+.segCurrent {
+  background: var(--sand);
+}
+
+/* Avatar picker */
+.avatarGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 400px) {
+  .avatarGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.avatarBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--line);
+  background: var(--card);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.avatarBtn:hover {
+  border-color: var(--brand);
+  transform: translateY(-2px);
+}
+
+.avatarBtnSelected {
+  border-color: var(--brand);
+  background: var(--sky-soft);
+  box-shadow: 0 0 0 3px rgba(1,130,253,.15);
+}
+
+.avatarName {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+/* Grade grid */
+.gradeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.gradeBtn {
+  padding: 12px 8px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--line);
+  background: var(--card);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.12s;
+  box-shadow: 0 3px 0 var(--line-strong);
+}
+
+.gradeBtn:hover {
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+
+.gradeBtnSelected {
+  border-color: var(--brand);
+  background: var(--sky-soft);
+  box-shadow: 0 3px 0 var(--brand-deep);
+  color: var(--brand-ink);
+}
+
+/* Field group spacing */
+.fieldGroup {
+  margin-bottom: 20px;
+}
+
+/* Toggle switch row */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  width: 100%;
+}
+
+.toggleRow:hover {
+  background: var(--sky-soft);
+}
+
+.toggleLabel {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 99px;
+  background: var(--line);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: var(--brand);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform 0.15s;
+}
+
+.toggleOn .toggleThumb {
+  transform: translateX(18px);
+}
+
+/* Role grid */
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.roleBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 14px 12px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--line);
+  background: var(--card);
+  cursor: pointer;
+  transition: all 0.12s;
+  box-shadow: 0 3px 0 var(--line-strong);
+  text-align: left;
+}
+
+.roleBtn:hover {
+  border-color: var(--brand);
+  transform: translateY(-2px);
+}
+
+.roleBtnSelected {
+  border-color: var(--brand);
+  background: var(--sky-soft);
+  box-shadow: 0 3px 0 var(--brand-deep);
+}
+
+.roleName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.roleShort {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+/* Transfer box */
+.transferBox {
+  background: var(--sky-soft);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-top: 10px;
+}
+
+/* Celebrate screen */
+.celebrateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 16px 48px;
+  gap: 12px;
+}
+
+.celebrateTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.celebrateSubtitle {
+  font-size: 1rem;
+  color: var(--ink-2);
+}
+
+.transferCodeCard {
+  background: var(--card);
+  border: 2px solid var(--sand);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-top: 4px;
+  min-width: 240px;
+  box-shadow: 0 4px 0 var(--sand-deep);
+}
+
+.transferCodeLabel {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+
+.transferCodeValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--brand-ink);
+  margin-bottom: 4px;
+}
+
+.transferCodeHint {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}

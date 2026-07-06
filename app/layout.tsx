@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Noto_Sans_TC } from 'next/font/google';
 import './globals.css';
+import MigrationBanner from '@/components/MigrationBanner';
 
 const notoSansTC = Noto_Sans_TC({
   subsets: ['latin'],
@@ -58,6 +59,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body>
+        <MigrationBanner />
         {children}
       </body>
     </html>

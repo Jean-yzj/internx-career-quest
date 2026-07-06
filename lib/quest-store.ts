@@ -1,7 +1,10 @@
 'use client';
 
 import type { QuestData, CareerStatus, AbilityLevel, Dimension } from './types';
-import { getTodayStr } from './types';
+import { getTodayStr, formatDateStr } from './types';
+import { syncProfile } from './profile';
+import { generateQuestLine, buildCompletedSet } from './quest-line';
+import type { ProfileV1 } from './quest-line';
 
 const QUEST_KEY = 'quest.v1';
 
@@ -39,7 +42,24 @@ function defaultQuest(): QuestData {
     totalPoints: 0,
     badges: [],
     streak: { days: 0, lastDate: '' },
+    questLine: null,
   };
+}
+
+/**
+ * 生成並存回 questLine（由 island 頁或整合階段呼叫）
+ * profileV1: 從 localStorage 'profile.v1' 讀到的物件
+ * generatedAt: 由呼叫端傳入（預設 now，可覆寫以便測試）
+ */
+export function regenerateQuestLine(
+  profileV1: ProfileV1,
+  generatedAt: string = new Date().toISOString(),
+): QuestData {
+  const data = loadQuest();
+  const completed = buildCompletedSet(data.tasks);
+  data.questLine = generateQuestLine(profileV1, completed, generatedAt);
+  saveQuest(data);
+  return data;
 }
 
 // Level thresholds: Lv1-7
@@ -94,6 +114,13 @@ export const TASK_DEFS: TaskDef[] = [
   { code: 'help_newbie', name: '公會內回覆他人', zone: '升級島', type: 'auto', points: 20, limit: 'weekly_2' },
   { code: 'join_guild', name: '加入一個公會', zone: '升級島', type: 'auto', points: 20, limit: 1 },
   { code: 'guild_intro', name: '公會首貼自我介紹', zone: '升級島', type: 'auto', points: 30, limit: 1 },
+  // §4.2 新任務（Agent B 追加）
+  { code: 'linkedin_create', name: '建立你的 LinkedIn（附 profile 連結）', zone: '探索島', type: 'self', points: 40, limit: 1 },
+  { code: 'club_join', name: '加入一個社團／專案並寫下想學什麼（50 字）', zone: '探索島', type: 'self', points: 40, limit: 1 },
+  { code: 'senior_interview', name: '訪談一位學長姐（附 3 個提問與 1 個收穫，80 字）', zone: '訓練場', type: 'self', points: 50, limit: 1 },
+  { code: 'exp_inventory', name: '完成經歷盤點表（列 3 段經歷：做了什麼/學到什麼）', zone: '履歷工坊', type: 'self', points: 40, limit: 1 },
+  { code: 'semester_plan', name: '擬一份本學期行動計畫（3 個目標）', zone: '探索島', type: 'self', points: 30, limit: 1 },
+  { code: 'goal_set', name: '設定目標職位', zone: '探索島', type: 'self', points: 20, limit: 1 },
 ];
 
 const DAILY_TASK_POOL = {
@@ -166,14 +193,14 @@ export function award(code: string, delta: number, reason: string, oneTime = fal
   const isDailyPool = code.startsWith('daily_');
   if (isDailyPool) {
     const dailyEarned = data.pointsLedger
-      .filter((e) => e.at.startsWith(today) && e.reason.includes('[daily]'))
+      .filter((e) => formatDateStr(new Date(e.at)) === today && e.reason.includes('[daily]'))
       .reduce((s, e) => s + e.delta, 0);
     if (dailyEarned >= DAILY_LIMIT) return data;
   }
 
   // Day total limit
   const dayTotal = data.pointsLedger
-    .filter((e) => e.at.startsWith(today))
+    .filter((e) => formatDateStr(new Date(e.at)) === today)
     .reduce((s, e) => s + e.delta, 0);
   if (dayTotal >= DAY_TOTAL_LIMIT) return data;
 
@@ -213,6 +240,7 @@ export function award(code: string, delta: number, reason: string, oneTime = fal
 
   checkAndGrantBadges(data);
   saveQuest(data);
+  syncProfile();
   return data;
 }
 
@@ -240,6 +268,7 @@ export function markDailyDone(code: string, data: QuestData): QuestData {
     }
     checkAndGrantBadges(data);
     saveQuest(data);
+    syncProfile();
   }
   return data;
 }

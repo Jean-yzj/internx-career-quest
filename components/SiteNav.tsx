@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { loadQuest, getLevel } from '@/lib/quest-store';
+import { getProfile } from '@/lib/profile';
 
 // Gold coin SVG (inline, no emoji)
 function CoinIcon({ size = 16 }: { size?: number }) {
@@ -71,7 +72,7 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
           </Link>
         </nav>
         {points !== null && (
-          <div className="nav-points-badge" aria-label={`點數：${points}`}>
+          <Link href="/profile" className="nav-points-badge" aria-label={`等級與點數，點擊進入個人頁`} style={{ textDecoration: 'none' }}>
             <CoinIcon size={14} />
             {points}
             {streak > 0 && (
@@ -85,7 +86,7 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
               </span>
             )}
             {levelName && <MedalChip label={levelName} />}
-          </div>
+          </Link>
         )}
       </div>
     </header>

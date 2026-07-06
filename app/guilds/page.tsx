@@ -11,6 +11,7 @@ const DB_UNAVAILABLE_MSG = '公會整修中，先去做今天的任務';
 interface GuildStats {
   memberCount: number;
   postCount: number;
+  last24hCount: number;
 }
 
 export default function GuildsPage() {
@@ -31,17 +32,32 @@ export default function GuildsPage() {
       if (joinedRaw) setJoined(JSON.parse(joinedRaw));
     } catch { /* ignore */ }
 
-    // 檢查可用性
-    fetch('/api/guild/feed?guild=pm')
-      .then(async (r) => {
-        if (r.status === 503) {
-          setAvailable(false);
-          return;
-        }
+    // 檢查可用性 + 取得各公會 24h 訊息統計
+    const fetchStats = async () => {
+      try {
+        const pmRes = await fetch('/api/guild/feed?guild=pm&limit=1');
+        if (pmRes.status === 503) { setAvailable(false); return; }
         setAvailable(true);
-        // 批次取得各公會簡要統計（只拿 pm 做可用性探測，其他按需拉）
-      })
-      .catch(() => setAvailable(false));
+        // 批次取得各公會 last24hCount
+        const allIds = GUILD_DEFS.map((g) => g.id);
+        const results = await Promise.allSettled(
+          allIds.map((id) => fetch(`/api/guild/feed?guild=${id}&limit=1`).then((r) => r.json()))
+        );
+        const newStats: Record<string, GuildStats> = {};
+        allIds.forEach((id, i) => {
+          const r = results[i];
+          if (r.status === 'fulfilled') {
+            newStats[id] = {
+              memberCount: r.value.memberCount ?? 0,
+              postCount: r.value.postCount ?? 0,
+              last24hCount: r.value.last24hCount ?? 0,
+            };
+          }
+        });
+        setStats(newStats);
+      } catch { setAvailable(false); }
+    };
+    fetchStats();
   }, []);
 
   // 取得推薦公會：目標職位對應 + explorer
@@ -100,6 +116,7 @@ export default function GuildsPage() {
 
 function GuildCard({ guild, isJoined, stats }: { guild: GuildDef; isJoined: boolean; stats?: GuildStats }) {
   const memberCount = stats?.memberCount ?? 0;
+  const last24hCount = stats?.last24hCount ?? 0;
 
   return (
     <a href={`/guilds/${guild.id}`} className="zone-card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', textDecoration: 'none', color: 'inherit' }}>
@@ -121,6 +138,9 @@ function GuildCard({ guild, isJoined, stats }: { guild: GuildDef; isJoined: bool
           )}
         </div>
         <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guild.tagline}</p>
+        {last24hCount > 0 && (
+          <p style={{ fontSize: '0.75rem', color: 'var(--brand)', marginTop: 3 }}>24 小時 {last24hCount} 則訊息</p>
+        )}
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         {memberCount >= 10 && (

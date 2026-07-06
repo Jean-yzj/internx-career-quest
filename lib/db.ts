@@ -40,6 +40,37 @@ export function getPool(): Pool {
   return pool;
 }
 
+export async function initProfileDb(): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS profiles (
+        device_id text PRIMARY KEY,
+        nickname text NOT NULL,
+        avatar_id int NOT NULL DEFAULT 1,
+        grade text NOT NULL DEFAULT 'y1',
+        has_resume boolean NOT NULL DEFAULT false,
+        has_club boolean NOT NULL DEFAULT false,
+        has_applied boolean NOT NULL DEFAULT false,
+        birth_year int,
+        goal_role text,
+        transfer_code text UNIQUE NOT NULL,
+        google_id text,
+        total_points int NOT NULL DEFAULT 0,
+        level int NOT NULL DEFAULT 1,
+        streak int NOT NULL DEFAULT 0,
+        badge_count int NOT NULL DEFAULT 0,
+        last_sync_date text,
+        day_points int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 export async function initDb(): Promise<void> {
   if (initialized) return;
   initialized = true;

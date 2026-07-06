@@ -8,6 +8,8 @@
 // We test by importing and running the pure logic inline (no DOM).
 // The types and logic are re-implemented here so the script runs in Node without bundling.
 
+function localDateStr(iso){const d=new Date(iso);const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`;}
+
 // ===== RIASEC Logic (mirrors lib/interest-quiz.ts) =====
 const RIASEC_Q_TYPES = ['R','R','R','I','I','I','A','A','A','S','S','S','E','E','E','C','C','C'];
 const TIEBREAK = ['R','I','A','S','E','C'];
@@ -64,12 +66,12 @@ function award(data, code, delta, reason, oneTime = false) {
   const isDailyPool = code.startsWith('daily_');
   if (isDailyPool) {
     const dailyEarned = data.pointsLedger
-      .filter(e => e.at.startsWith(today) && e.reason.includes('[daily]'))
+      .filter(e => localDateStr(e.at) === today && e.reason.includes('[daily]'))
       .reduce((s,e) => s + e.delta, 0);
     if (dailyEarned >= DAILY_LIMIT) return data;
   }
   const dayTotal = data.pointsLedger
-    .filter(e => e.at.startsWith(today))
+    .filter(e => localDateStr(e.at) === today)
     .reduce((s,e) => s + e.delta, 0);
   if (dayTotal >= DAY_TOTAL_LIMIT) return data;
 
@@ -140,7 +142,7 @@ console.log('\n4. 每日池日上限 30 點生效');
   }
   const today = getTodayStr();
   const dailyEarned = data.pointsLedger
-    .filter(e => e.at.startsWith(today) && e.reason.includes('[daily]'))
+    .filter(e => localDateStr(e.at) === today && e.reason.includes('[daily]'))
     .reduce((s,e) => s + e.delta, 0);
   check('每日池累計 ≤ 30', dailyEarned <= 30, `dailyEarned=${dailyEarned}`);
   check('第4次日池任務不計入（dailyEarned=30）', dailyEarned === 30, `dailyEarned=${dailyEarned}`);

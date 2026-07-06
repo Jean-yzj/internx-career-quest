@@ -173,4 +173,5 @@ export interface QuestData {
   totalPoints: number;
   badges: { id: string; at: string }[];
   streak: { days: number; lastDate: string };
+  questLine?: import('./quest-line').QuestLine | null;
 }

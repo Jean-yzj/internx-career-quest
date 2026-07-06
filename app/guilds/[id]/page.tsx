@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
-import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
 import { GUILD_DEFS } from '@/lib/guilds';
 import { award } from '@/lib/quest-store';
+import styles from './guild-chat.module.css';
 
 interface Post {
   id: string;
@@ -18,10 +18,19 @@ interface Post {
   hidden: boolean;
   report_count: number;
   created_at: string;
+  reply_to?: string | null;
+  // populated client-side for initial load
   replies?: Post[];
+  // local-only fields
+  _optimistic?: boolean;
+  _failed?: boolean;
+  _replyToContent?: string; // resolved content of parent
+  _replyToNickname?: string;
 }
 
 const SENSITIVE_NICKNAME_WORDS = ['官方', '藍藍', 'admin', 'Admin', 'ADMIN'];
+const POLL_INTERVAL_MS = 5000;
+const REPLY_TRUNCATE = 30;
 
 function getDeviceId(): string {
   let id = localStorage.getItem('guild.deviceId');
@@ -36,7 +45,7 @@ function getNickname(): string | null {
   return localStorage.getItem('guild.nickname');
 }
 
-function setNickname(nick: string): void {
+function setNicknameLocal(nick: string): void {
   localStorage.setItem('guild.nickname', nick);
 }
 
@@ -53,9 +62,35 @@ function formatTime(iso: string): string {
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
   if (diff < 60) return '剛剛';
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分鐘前`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分前`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} 小時前`;
   return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function truncate(s: string, len: number): string {
+  if (!s) return '';
+  return s.length > len ? s.slice(0, len) + '…' : s;
+}
+
+// Flatten nested posts from initial load into a flat list with reply metadata resolved
+function flattenPosts(posts: Post[]): Post[] {
+  const all: Post[] = [];
+  const contentMap: Record<string, { content: string; nickname: string }> = {};
+  for (const p of posts) {
+    contentMap[p.id] = { content: p.content, nickname: p.nickname };
+  }
+  for (const p of posts) {
+    all.push(p);
+    if (p.replies) {
+      for (const r of p.replies) {
+        contentMap[r.id] = { content: r.content, nickname: r.nickname };
+        all.push({ ...r, _replyToContent: contentMap[String(r.reply_to)]?.content, _replyToNickname: contentMap[String(r.reply_to)]?.nickname });
+      }
+    }
+  }
+  // sort ascending by created_at
+  all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return all;
 }
 
 export default function GuildDetailPage() {
@@ -67,9 +102,8 @@ export default function GuildDetailPage() {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [memberCount, setMemberCount] = useState(0);
-  const [postCount, setPostCount] = useState(0);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const [deviceId, setDeviceId] = useState('');
   const [nickname, setNicknameState] = useState<string | null>(null);
@@ -81,24 +115,103 @@ export default function GuildDetailPage() {
   const [nicknameError, setNicknameError] = useState('');
   const [nicknameSubmitting, setNicknameSubmitting] = useState(false);
 
-  // Post composer
-  const [postContent, setPostContent] = useState('');
-  const [postError, setPostError] = useState('');
-  const [postSubmitting, setPostSubmitting] = useState(false);
+  // Chat input
+  const [inputContent, setInputContent] = useState('');
+  const [inputSubmitting, setInputSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Post | null>(null);
+  const isComposingRef = useRef(false);
 
-  // Reply state
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyContent, setReplyContent] = useState('');
-  const [replyError, setReplyError] = useState('');
-  const [replySubmitting, setReplySubmitting] = useState(false);
+  // Context menu
+  const [menuPostId, setMenuPostId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Rules accordion
-  const [rulesOpen, setRulesOpen] = useState(false);
-
-  // Reported posts (local tracking to show inline feedback)
+  // Reported posts
   const [reportedPosts, setReportedPosts] = useState<Set<string>>(new Set());
 
-  const replyRef = useRef<HTMLTextAreaElement>(null);
+  // Refs
+  const feedRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const latestCreatedAt = useRef<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  // post content map for reply preview resolution
+  const postContentMapRef = useRef<Record<string, { content: string; nickname: string }>>({});
+
+  // auto-scroll to bottom
+  const scrollToBottom = useCallback((smooth = false) => {
+    const el = feedRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
+
+  // Load initial feed
+  const loadFeed = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/guild/feed?guild=${guildId}&limit=50`);
+      if (r.status === 503) { setAvailable(false); return; }
+      setAvailable(true);
+      const data = await r.json();
+      const flat = flattenPosts(data.posts ?? []);
+      // update content map
+      for (const p of flat) {
+        postContentMapRef.current[p.id] = { content: p.content, nickname: p.nickname };
+      }
+      setPosts(flat);
+      setMemberCount(data.memberCount ?? 0);
+      if (flat.length > 0) {
+        latestCreatedAt.current = flat[flat.length - 1].created_at;
+      }
+      setInitialLoaded(true);
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, [guildId]);
+
+  // Poll for new messages
+  const pollFeed = useCallback(async () => {
+    if (document.hidden) return;
+    if (!latestCreatedAt.current) return;
+    try {
+      const after = encodeURIComponent(latestCreatedAt.current);
+      const r = await fetch(`/api/guild/feed?guild=${guildId}&after=${after}&limit=50`);
+      if (!r.ok) return;
+      const data = await r.json();
+      const newPosts: Post[] = (data.posts ?? []).filter((p: Post) => !p.hidden);
+      if (newPosts.length > 0) {
+        // resolve reply content from map
+        const enriched = newPosts.map((p) => {
+          postContentMapRef.current[p.id] = { content: p.content, nickname: p.nickname };
+          if (p.reply_to) {
+            const parent = postContentMapRef.current[String(p.reply_to)];
+            return { ...p, _replyToContent: parent?.content, _replyToNickname: parent?.nickname };
+          }
+          return p;
+        });
+        setPosts((prev) => {
+          // remove any optimistic versions that match (by content + deviceId within 30s)
+          const confirmed = new Set(enriched.map((p: Post) => p.id));
+          const filtered = prev.filter((p) => {
+            if (!p._optimistic) return true;
+            // keep optimistic if no match yet
+            return !confirmed.has(p.id);
+          });
+          return [...filtered, ...enriched];
+        });
+        latestCreatedAt.current = newPosts[newPosts.length - 1].created_at;
+      }
+    } catch { /* ignore */ }
+  }, [guildId]);
+
+  // Schedule next poll
+  const schedulePoll = useCallback(() => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    pollTimerRef.current = setTimeout(async () => {
+      await pollFeed();
+      schedulePoll();
+    }, POLL_INTERVAL_MS);
+  }, [pollFeed]);
 
   useEffect(() => {
     if (!guild) { router.push('/guilds'); return; }
@@ -108,43 +221,54 @@ export default function GuildDetailPage() {
     setNicknameState(nick);
     const joined = getJoined();
     setIsJoined(joined.includes(guildId));
-    fetchFeed(null, true);
+    loadFeed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guildId]);
 
+  // Start polling after initial load
   useEffect(() => {
-    if (replyingTo && replyRef.current) {
-      replyRef.current.focus();
-    }
-  }, [replyingTo]);
-
-  async function fetchFeed(cursor: string | null, reset: boolean) {
-    setLoading(true);
-    try {
-      const url = `/api/guild/feed?guild=${guildId}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
-      const r = await fetch(url);
-      if (r.status === 503) { setAvailable(false); return; }
-      setAvailable(true);
-      const data = await r.json();
-      if (reset) {
-        setPosts(data.posts ?? []);
+    if (!initialLoaded) return;
+    schedulePoll();
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        pollFeed().then(schedulePoll);
       } else {
-        setPosts((prev) => [...prev, ...(data.posts ?? [])]);
+        if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       }
-      setMemberCount(data.memberCount ?? 0);
-      setPostCount(data.postCount ?? 0);
-      setNextCursor(data.nextCursor ?? null);
-    } catch { /* ignore */ } finally {
-      setLoading(false);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, [initialLoaded, schedulePoll, pollFeed]);
+
+  // Auto-scroll when posts change (only if near bottom)
+  useEffect(() => {
+    const el = feedRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom || !initialLoaded) {
+      scrollToBottom();
     }
-  }
+  }, [posts, scrollToBottom, initialLoaded]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuPostId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   function ensureNicknameAndJoined(action: () => void) {
     const nick = getNickname();
     if (!nick) {
+      pendingActionRef.current = action;
       setShowNicknameModal(true);
-      // Store pending action type
-      (window as { _guildPendingAction?: () => void })._guildPendingAction = action;
       return;
     }
     action();
@@ -157,13 +281,11 @@ export default function GuildDetailPage() {
       return;
     }
     if (SENSITIVE_NICKNAME_WORDS.some((w) => trimmed.includes(w))) {
-      setNicknameError('暱稱不可包含「官方」、「藍藍」、「admin」等詞彙');
+      setNicknameError('暱稱不可包含「官方」「藍藍」「admin」等詞彙');
       return;
     }
     setNicknameSubmitting(true);
     setNicknameError('');
-
-    // Join this guild
     try {
       const r = await fetch('/api/guild/join', {
         method: 'POST',
@@ -176,27 +298,20 @@ export default function GuildDetailPage() {
         setNicknameSubmitting(false);
         return;
       }
-      setNickname(trimmed);
+      setNicknameLocal(trimmed);
       setNicknameState(trimmed);
       const joined = getJoined();
       if (!joined.includes(guildId)) {
-        const next = [...joined, guildId];
-        setJoined(next);
+        setJoined([...joined, guildId]);
         setIsJoined(true);
       }
       setMemberCount(data.memberCount ?? memberCount);
       setShowNicknameModal(false);
       setNicknameInput('');
-
-      // Award join_guild task (one-time)
       award('join_guild', 20, '加入公會', true);
-
-      // Execute pending action
-      const pending = (window as { _guildPendingAction?: () => void })._guildPendingAction;
-      if (pending) {
-        (window as { _guildPendingAction?: () => void })._guildPendingAction = undefined;
-        pending();
-      }
+      const pending = pendingActionRef.current;
+      pendingActionRef.current = null;
+      if (pending) pending();
     } catch {
       setNicknameError('網路錯誤，請再試');
     } finally {
@@ -206,10 +321,7 @@ export default function GuildDetailPage() {
 
   async function handleJoinOnly() {
     const nick = getNickname();
-    if (!nick) {
-      setShowNicknameModal(true);
-      return;
-    }
+    if (!nick) { setShowNicknameModal(true); return; }
     try {
       const r = await fetch('/api/guild/join', {
         method: 'POST',
@@ -220,8 +332,7 @@ export default function GuildDetailPage() {
       if (r.ok) {
         const joined = getJoined();
         if (!joined.includes(guildId)) {
-          const next = [...joined, guildId];
-          setJoined(next);
+          setJoined([...joined, guildId]);
           setIsJoined(true);
         }
         setMemberCount(data.memberCount ?? memberCount);
@@ -230,74 +341,71 @@ export default function GuildDetailPage() {
     } catch { /* ignore */ }
   }
 
-  async function handlePost() {
+  async function handleSend() {
     const nick = getNickname();
-    if (!nick) {
-      setShowNicknameModal(true);
-      return;
-    }
-    if (!postContent.trim()) {
-      setPostError('請輸入內容');
-      return;
-    }
-    setPostSubmitting(true);
-    setPostError('');
+    if (!nick) { ensureNicknameAndJoined(handleSend); return; }
+    const content = inputContent.trim();
+    if (!content) return;
+
+    const optimisticId = `opt-${Date.now()}-${Math.random()}`;
+    const optimisticPost: Post = {
+      id: optimisticId,
+      guild_id: guildId,
+      device_id: deviceId,
+      nickname: nick,
+      content,
+      official: false,
+      hidden: false,
+      report_count: 0,
+      created_at: new Date().toISOString(),
+      reply_to: replyingTo?.id ?? null,
+      _optimistic: true,
+      _replyToContent: replyingTo?.content,
+      _replyToNickname: replyingTo?.nickname,
+    };
+
+    setPosts((prev) => [...prev, optimisticPost]);
+    setInputContent('');
+    const prevReplyingTo = replyingTo;
+    setReplyingTo(null);
+    setInputSubmitting(true);
+
     try {
       const r = await fetch('/api/guild/post', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ guildId, deviceId, nickname: nick, content: postContent.trim() }),
+        body: JSON.stringify({
+          guildId,
+          deviceId,
+          nickname: nick,
+          content,
+          replyTo: prevReplyingTo?.id ?? undefined,
+        }),
       });
-      const data = await r.json();
       if (!r.ok) {
-        setPostError(data.error ?? '發文失敗');
-        setPostSubmitting(false);
+        // Mark optimistic as failed
+        setPosts((prev) => prev.map((p) => p.id === optimisticId ? { ...p, _failed: true, _optimistic: false } : p));
         return;
       }
-      setPostContent('');
-      // Award guild_intro (first post, one-time) and 社群破冰 badge
+      // Server confirmed; the next poll will pick up the real post.
+      // Remove optimistic entry preemptively (poll will add real one).
+      // We keep it for now — poll will dedupe or replace.
       award('guild_intro', 30, '公會首貼自我介紹', true);
-      await fetchFeed(null, true);
     } catch {
-      setPostError('網路錯誤，請再試');
+      setPosts((prev) => prev.map((p) => p.id === optimisticId ? { ...p, _failed: true, _optimistic: false } : p));
     } finally {
-      setPostSubmitting(false);
+      setInputSubmitting(false);
     }
   }
 
-  async function handleReply(replyToId: string) {
+  async function handleRetry(post: Post) {
     const nick = getNickname();
-    if (!nick) {
-      setShowNicknameModal(true);
-      return;
-    }
-    if (!replyContent.trim()) {
-      setReplyError('請輸入內容');
-      return;
-    }
-    setReplySubmitting(true);
-    setReplyError('');
-    try {
-      const r = await fetch('/api/guild/post', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ guildId, deviceId, nickname: nick, content: replyContent.trim(), replyTo: replyToId }),
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        setReplyError(data.error ?? '回覆失敗');
-        setReplySubmitting(false);
-        return;
-      }
-      setReplyContent('');
-      setReplyingTo(null);
-      // Award help_newbie (weekly 2)
-      award('help_newbie', 20, '公會內回覆他人');
-      await fetchFeed(null, true);
-    } catch {
-      setReplyError('網路錯誤，請再試');
-    } finally {
-      setReplySubmitting(false);
+    if (!nick) return;
+    setPosts((prev) => prev.filter((p) => p.id !== post.id));
+    setInputContent(post.content);
+    if (post.reply_to) {
+      const parent = postContentMapRef.current[post.reply_to];
+      if (parent) setReplyingTo({ ...post, id: post.reply_to, content: parent.content, nickname: parent.nickname });
     }
   }
 
@@ -319,6 +427,11 @@ export default function GuildDetailPage() {
     } catch { /* ignore */ }
   }
 
+  function handleBubbleTap(post: Post) {
+    if (post._failed || post._optimistic || post.official) return;
+    setMenuPostId((prev) => (prev === post.id ? null : post.id));
+  }
+
   if (!guild) return null;
 
   if (available === false) {
@@ -333,134 +446,128 @@ export default function GuildDetailPage() {
             <a href="/island" className="btn-game" style={{ display: 'inline-flex', marginTop: 20 }}>回到闖關島</a>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="site-wrapper">
+    <div className="site-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       <SiteNav activePath="/guilds" />
-      <main className="site-main" id="main-content">
 
-        {/* Guild header */}
-        <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 56, height: 56, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: guild.badge }} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 4 }}>{guild.name}</h1>
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: 8 }}>{guild.tagline}</p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink)', marginBottom: 6 }}>{guild.intro1}</p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink)' }}>{guild.intro2}</p>
-            <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              {memberCount >= 10 && <span style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>{memberCount} 成員</span>}
-              <span style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>{postCount} 則討論</span>
-              {!isJoined && (
-                <button type="button" className="btn-game-teal" style={{ padding: '8px 18px', fontSize: '0.875rem' }} onClick={handleJoinOnly}>
-                  加入公會
-                </button>
-              )}
-              {isJoined && <span style={{ fontSize: '0.8125rem', color: 'var(--ok)', fontWeight: 600 }}>已加入</span>}
+      <div className={styles.chatLayout}>
+        {/* Chat header */}
+        <div className={styles.chatHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <a href="/guilds" style={{ color: 'var(--brand)', display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }} aria-label="返回公會大廳">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </a>
+            <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: '50%', border: `2px solid ${guild.accentColor}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <div style={{ width: 28, height: 28 }} dangerouslySetInnerHTML={{ __html: guild.badge }} />
             </div>
-          </div>
-        </div>
-
-        {/* Rules accordion */}
-        <div className="card" style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
-          <button
-            type="button"
-            onClick={() => setRulesOpen((v) => !v)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink)' }}
-            aria-expanded={rulesOpen}
-          >
-            版規
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ transform: rulesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          {rulesOpen && (
-            <div style={{ padding: '0 16px 14px', fontSize: '0.875rem', color: 'var(--ink-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p>1. 互相尊重，不攻擊他人。</p>
-              <p>2. 不在公開版面留個人聯絡方式（手機號、LINE 等）。</p>
-              <p>3. 廣告或業配內容請舉報。</p>
-              <p>4. 本公會內容對所有人公開，請謹慎分享個人資訊。</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guild.name}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>
+                {memberCount >= 10 ? `${memberCount} 成員` : guild.tagline}
+                {!isJoined && (
+                  <button type="button" onClick={handleJoinOnly} style={{ marginLeft: 10, fontSize: '0.75rem', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>加入公會</button>
+                )}
+                {isJoined && <span style={{ marginLeft: 10, fontSize: '0.75rem', color: 'var(--ok, #52c41a)', fontWeight: 600 }}>已加入</span>}
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Post composer */}
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: 10 }}>發表討論</h2>
-          <textarea
-            rows={3}
-            placeholder={isJoined ? '說說你的想法...' : '加入公會後即可發文'}
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-            maxLength={500}
-            className="field-guild-post"
-            style={{ width: '100%', resize: 'vertical', border: '1.5px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: '1rem', fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none', transition: 'border-color .12s, box-shadow .12s' }}
-            onFocus={() => {
-              if (!getNickname()) {
-                setShowNicknameModal(true);
-              }
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{postContent.length}/500</span>
-            {postError && <span style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>{postError}</span>}
-            <button
-              type="button"
-              className="btn-game-teal"
-              style={{ padding: '7px 16px', fontSize: '0.875rem' }}
-              onClick={() => ensureNicknameAndJoined(handlePost)}
-              disabled={postSubmitting}
-            >
-              {postSubmitting ? '發文中...' : '發文'}
-            </button>
           </div>
         </div>
 
         {/* Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className={styles.chatFeed} ref={feedRef}>
           {loading && posts.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--ink-2)', fontSize: '0.875rem' }}>載入中...</div>
+            <div className={styles.feedEmpty}>載入中...</div>
           )}
+          {!loading && posts.length === 0 && available && (
+            <div className={styles.feedEmpty}>目前還沒有訊息，來發第一則吧</div>
+          )}
+
           {posts.map((post) => (
-            <PostCard
+            <MessageBubble
               key={post.id}
               post={post}
               currentDeviceId={deviceId}
-              isReplying={replyingTo === post.id}
-              replyContent={replyContent}
-              replyError={replyError}
-              replySubmitting={replySubmitting}
+              menuOpen={menuPostId === post.id}
+              menuRef={menuRef}
               reported={reportedPosts.has(post.id)}
-              onStartReply={() => {
-                setReplyingTo(post.id);
-                setReplyContent('');
-                setReplyError('');
-              }}
-              onCancelReply={() => setReplyingTo(null)}
-              onReplyChange={setReplyContent}
-              onReplySubmit={() => handleReply(post.id)}
-              onReport={() => handleReport(post.id)}
+              onTap={() => handleBubbleTap(post)}
+              onQuote={() => { setReplyingTo(post); setMenuPostId(null); textareaRef.current?.focus(); }}
+              onReport={() => { handleReport(post.id); setMenuPostId(null); }}
+              onRetry={() => handleRetry(post)}
             />
           ))}
-          {nextCursor && (
+        </div>
+
+        {/* Input area */}
+        <div className={styles.chatInputArea}>
+          {replyingTo && (
+            <div className={styles.replyBanner}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--brand)' }}>
+                <path d="M2 7V4a1 1 0 011-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M5 3L2 6l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className={styles.replyBannerText}>
+                回覆 {replyingTo.nickname}：{truncate(replyingTo.content, 24)}
+              </span>
+              <button type="button" className={styles.replyBannerClose} onClick={() => setReplyingTo(null)} aria-label="取消引用">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+          )}
+          <div className={styles.inputRow}>
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={inputContent}
+              onChange={(e) => {
+                setInputContent(e.target.value);
+                // auto-grow
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onCompositionStart={() => { isComposingRef.current = true; }}
+              onCompositionEnd={() => { isComposingRef.current = false; }}
+              onKeyDown={(e) => {
+                // Enter alone: do NOT submit (chat norm: Enter = new line; send button only)
+                // But Shift+Enter always fine
+                // This is intentional — button-only submit
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  // no-op (allow newline via Enter)
+                }
+              }}
+              placeholder={isJoined ? '傳訊息...' : '加入公會後即可傳訊息'}
+              disabled={inputSubmitting}
+              maxLength={500}
+              className={`${styles.chatTextarea} ${!isJoined ? styles.chatTextareaLocked : ''}`}
+              onFocus={() => {
+                if (!getNickname()) {
+                  setShowNicknameModal(true);
+                }
+              }}
+              style={{ height: '40px' }}
+            />
             <button
               type="button"
-              onClick={() => fetchFeed(nextCursor, false)}
-              disabled={loading}
-              style={{ width: '100%', padding: '12px', background: 'none', border: '1px solid var(--line)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--brand)', cursor: 'pointer' }}
+              className={styles.sendBtn}
+              disabled={inputSubmitting || !inputContent.trim() || isComposingRef.current}
+              onClick={() => ensureNicknameAndJoined(handleSend)}
+              aria-label="傳送"
             >
-              {loading ? '載入中...' : '載入更多'}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M2 9l14-6-6 14-2-6-6-2z" fill="currentColor"/>
+              </svg>
             </button>
-          )}
-          {!loading && posts.length === 0 && available && (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--ink-2)', fontSize: '0.875rem' }}>目前還沒有討論，來發第一則吧</div>
-          )}
+          </div>
         </div>
-      </main>
-      <Footer />
+      </div>
 
       {/* Nickname modal */}
       {showNicknameModal && (
@@ -474,7 +581,7 @@ export default function GuildDetailPage() {
               onChange={(e) => setNicknameInput(e.target.value)}
               maxLength={12}
               placeholder="你的暱稱"
-              style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 12px', fontSize: '1rem', fontFamily: 'inherit', color: 'var(--ink)', outline: 'none', marginBottom: 8 }}
+              style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 12px', fontSize: '1rem', fontFamily: 'inherit', color: 'var(--ink)', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleNicknameSubmit(); }}
               autoFocus
             />
@@ -492,30 +599,35 @@ export default function GuildDetailPage() {
   );
 }
 
-function PostCard({
-  post, currentDeviceId, isReplying, replyContent, replyError, replySubmitting, reported,
-  onStartReply, onCancelReply, onReplyChange, onReplySubmit, onReport,
+function MessageBubble({
+  post,
+  currentDeviceId,
+  menuOpen,
+  menuRef,
+  reported,
+  onTap,
+  onQuote,
+  onReport,
+  onRetry,
 }: {
   post: Post;
   currentDeviceId: string;
-  isReplying: boolean;
-  replyContent: string;
-  replyError: string;
-  replySubmitting: boolean;
+  menuOpen: boolean;
+  menuRef: React.RefObject<HTMLDivElement | null>;
   reported: boolean;
-  onStartReply: () => void;
-  onCancelReply: () => void;
-  onReplyChange: (v: string) => void;
-  onReplySubmit: () => void;
+  onTap: () => void;
+  onQuote: () => void;
   onReport: () => void;
+  onRetry: () => void;
 }) {
-  const isOfficial = post.official;
   const isOwn = post.device_id === currentDeviceId;
+  const isOfficial = post.official;
+  const isFailed = post._failed;
 
-  // Official posts rendered as bubble with mascot
+  // Official message: left-aligned mascot bubble
   if (isOfficial) {
     return (
-      <div className="guild-bubble-post">
+      <div className={`${styles.officialRow} guild-bubble-post`}>
         <div className="guild-bubble-avatar">
           <Mascot size={28} variant="happy" />
         </div>
@@ -532,87 +644,81 @@ function PostCard({
   }
 
   return (
-    <div className="card" style={{ padding: '14px 16px' }}>
-      {/* Post header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: 'var(--sky-soft)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-          border: '1.5px solid var(--line)',
-        }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div className={`${styles.msgRow} ${isOwn ? styles.msgRowOwn : ''}`}>
+      {/* Avatar — only for others */}
+      {!isOwn && (
+        <div className={styles.msgAvatar} aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="5.5" r="2.5" stroke="var(--brand)" strokeWidth="1.5"/>
             <path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--ink)' }}>{post.nickname}</span>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
+        {/* Nickname + time */}
+        <div className={`${styles.msgMeta} ${isOwn ? styles.msgMetaOwn : ''}`}>
+          {!isOwn && <span className={styles.msgNickname}>{post.nickname}</span>}
+          <span className={styles.msgTime}>{formatTime(post.created_at)}</span>
+          {isFailed && <span style={{ fontSize: '0.6875rem', color: '#ff4d4f' }}>傳送失敗</span>}
         </div>
-        <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{formatTime(post.created_at)}</span>
-      </div>
 
-      {/* Content */}
-      <p style={{ fontSize: '0.9375rem', color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+        {/* Bubble */}
+        <div
+          className={`${styles.msgBubble} ${isFailed ? styles.msgBubbleFailed : isOwn ? styles.msgBubbleOwn : styles.msgBubbleOther}`}
+          onClick={onTap}
+          onContextMenu={(e) => { e.preventDefault(); onTap(); }}
+          role="button"
+          tabIndex={0}
+          aria-label={`${post.nickname}：${post.content}`}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onTap(); }}
+          style={{ position: 'relative' }}
+        >
+          {/* Reply preview */}
+          {(post._replyToContent || post.reply_to) && (
+            <div className={styles.replyPreview}>
+              {post._replyToNickname && <strong>{post._replyToNickname}：</strong>}
+              {truncate(post._replyToContent ?? '訊息', REPLY_TRUNCATE)}
+            </div>
+          )}
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center' }}>
-        {!isOfficial && (
-          <button type="button" onClick={onStartReply} style={{ fontSize: '0.8125rem', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            回覆
-          </button>
-        )}
-        {!isOwn && !isOfficial && (
+          <span style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{post.content}</span>
+
+          {/* Context menu */}
+          {menuOpen && (
+            <div
+              ref={menuRef}
+              className={styles.msgMenu}
+              style={{ [isOwn ? 'right' : 'left']: 0, top: 'calc(100% + 4px)' }}
+            >
+              <button type="button" className={styles.msgMenuBtn} onClick={(e) => { e.stopPropagation(); onQuote(); }}>
+                引用
+              </button>
+              {!isOwn && (
+                <button
+                  type="button"
+                  className={`${styles.msgMenuBtn} ${styles.msgMenuBtnDanger}`}
+                  onClick={(e) => { e.stopPropagation(); onReport(); }}
+                  disabled={reported}
+                >
+                  {reported ? '已檢舉' : '檢舉'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Failed: retry */}
+        {isFailed && (
           <button
             type="button"
-            onClick={onReport}
-            disabled={reported}
-            style={{ fontSize: '0.8125rem', color: reported ? 'var(--ink-2)' : 'var(--danger)', background: 'none', border: 'none', cursor: reported ? 'default' : 'pointer', padding: 0, marginLeft: 'auto' }}
+            onClick={onRetry}
+            style={{ fontSize: '0.75rem', color: '#ff4d4f', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}
           >
-            {reported ? '已舉報' : '檢舉'}
+            點此重送
           </button>
         )}
       </div>
-
-      {/* Reply box */}
-      {isReplying && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-          <textarea
-            rows={2}
-            value={replyContent}
-            onChange={(e) => onReplyChange(e.target.value)}
-            maxLength={300}
-            placeholder="輸入回覆..."
-            style={{ width: '100%', resize: 'none', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px', fontSize: '0.9375rem', fontFamily: 'inherit', background: 'var(--bg)', color: 'var(--ink)', outline: 'none' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{replyContent.length}/300</span>
-            {replyError && <span style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>{replyError}</span>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={onCancelReply} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'none', cursor: 'pointer', fontSize: '0.8125rem' }}>取消</button>
-              <button type="button" className="btn-primary" style={{ padding: '5px 12px', fontSize: '0.8125rem' }} onClick={onReplySubmit} disabled={replySubmitting}>
-                {replySubmitting ? '傳送中' : '傳送'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Replies */}
-      {post.replies && post.replies.length > 0 && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {post.replies.map((reply) => (
-            <div key={reply.id} style={{ paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink)' }}>{reply.nickname}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>{formatTime(reply.created_at)}</span>
-              </div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--ink)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{reply.content}</p>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

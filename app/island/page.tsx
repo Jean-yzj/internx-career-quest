@@ -1,16 +1,23 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
-import { loadQuest, saveQuest, getLevel, TASK_DEFS, getDailyPool, bridgeWarRoomEvents, markDailyDone, BADGES } from '@/lib/quest-store';
+import {
+  loadQuest, saveQuest, getLevel, TASK_DEFS, getDailyPool,
+  bridgeWarRoomEvents, markDailyDone, BADGES, regenerateQuestLine,
+} from '@/lib/quest-store';
 import type { QuestData } from '@/lib/types';
 import { getTodayStr } from '@/lib/types';
-import { getRoleById } from '@/lib/roles';
+import { generateQuestLine, buildCompletedSet, getCurrentStage } from '@/lib/quest-line';
+import type { QuestLine, Chapter, Stage, ProfileV1 } from '@/lib/quest-line';
 import { GUILD_DEFS } from '@/lib/guilds';
+import styles from './island.module.css';
 
-// ---- helpers ----
+// ──────────────────────────────────────────────
+// 小圖示元件
+// ──────────────────────────────────────────────
 function CoinIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -41,85 +48,282 @@ function LockIcon() {
   );
 }
 
-// Zone scene badges (64px circle)
-const ZONE_SCENE: Record<string, React.ReactNode> = {
-  '探索島': (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <circle cx="18" cy="18" r="15" stroke="var(--sky-deep)" strokeWidth="1.5" opacity=".4"/>
-      <path d="M18 8l2 6.5h6.5l-5.5 4 2 6.5L18 21l-5 4 2-6.5-5.5-4H16.5Z" fill="var(--sky-deep)" opacity=".6"/>
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <polygon
+        points="12,3 14.5,8.5 21,9.5 16.5,14 17.5,20.5 12,17.5 6.5,20.5 7.5,14 3,9.5 9.5,8.5"
+        fill={filled ? 'var(--sand-deep)' : 'none'}
+        stroke={filled ? 'var(--sand-deep)' : 'var(--line-strong)'}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
     </svg>
-  ),
-  '履歷工坊': (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <rect x="7" y="4" width="22" height="28" rx="4" stroke="var(--sand-deep)" strokeWidth="1.5" opacity=".5"/>
-      <path d="M12 13h12M12 18h8M12 23h10" stroke="var(--sand-deep)" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  ),
-  '訓練場': (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <circle cx="7" cy="18" r="4" stroke="var(--mint-deep)" strokeWidth="1.5" opacity=".5"/>
-      <circle cx="29" cy="18" r="4" stroke="var(--mint-deep)" strokeWidth="1.5" opacity=".5"/>
-      <path d="M11 18h14" stroke="var(--mint-deep)" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M5 18h2M29 18h2" stroke="var(--mint-deep)" strokeWidth="2.5" strokeLinecap="round"/>
-    </svg>
-  ),
-  '戰情室': (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <rect x="4" y="8" width="28" height="18" rx="3" stroke="var(--coral-deep)" strokeWidth="1.5" opacity=".5"/>
-      <path d="M10 16h5M10 21h16M17 16h9" stroke="var(--coral-deep)" strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M16 26v4M20 26v4" stroke="var(--coral-deep)" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  ),
-  '升級島': (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <path d="M18 4l3 9h9l-7 5 3 9-8-5-8 5 3-9-7-5h9Z" stroke="var(--grape-deep)" strokeWidth="1.5" fill="var(--grape-deep)" fillOpacity=".18" strokeLinejoin="round"/>
-    </svg>
-  ),
-};
+  );
+}
 
-const ZONE_COLORS: Record<string, { soft: string; main: string; deep: string }> = {
-  '探索島':  { soft: 'var(--sky-soft)',   main: 'var(--sky)',   deep: 'var(--sky-deep)' },
-  '履歷工坊': { soft: 'var(--sand-soft)',  main: 'var(--sand)',  deep: 'var(--sand-deep)' },
-  '訓練場':  { soft: 'var(--mint-soft)',  main: 'var(--mint)',  deep: 'var(--mint-deep)' },
-  '戰情室':  { soft: 'var(--coral-soft)', main: 'var(--coral)', deep: 'var(--coral-deep)' },
-  '升級島':  { soft: 'var(--grape-soft)', main: 'var(--grape)', deep: 'var(--grape-deep)' },
-};
+// 藍藍小角色（站在節點上）
+function BlueBlue({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <path d="M60 18c22 0 34 16 34 36 0 22-14 38-34 38S26 76 26 54c0-20 12-36 34-36z" fill="#4DA3FF" stroke="#1861A8" strokeWidth="3"/>
+      <path d="M60 46c12 0 20 9 20 20 0 12-8 20-20 20s-20-8-20-20c0-11 8-20 20-20z" fill="#EAF4FF"/>
+      <circle cx="48" cy="50" r="4" fill="#1A2733"/><circle cx="72" cy="50" r="4" fill="#1A2733"/>
+      <circle cx="50" cy="48" r="1.5" fill="#fff"/><circle cx="74" cy="48" r="1.5" fill="#fff"/>
+      <path d="M54 59c3 3 9 3 12 0" stroke="#1A2733" strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="40" cy="57" r="4" fill="#FF9FB0" opacity=".7"/><circle cx="80" cy="57" r="4" fill="#FF9FB0" opacity=".7"/>
+    </svg>
+  );
+}
 
-const ZONES = ['探索島', '履歷工坊', '訓練場', '戰情室', '升級島'];
+// 章旗 SVG
+function FlagIcon({ color = 'var(--brand)' }: { color?: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 2v12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M3 2l8 3-8 3" fill={color} opacity=".8"/>
+    </svg>
+  );
+}
 
+// ──────────────────────────────────────────────
+// 節點狀態型別
+// ──────────────────────────────────────────────
+type NodeState = 'cleared' | 'current' | 'locked';
+
+interface StageWithState extends Stage {
+  cleared?: boolean;
+  state: NodeState;
+}
+
+interface ChapterWithState extends Omit<Chapter, 'stages'> {
+  stages: StageWithState[];
+}
+
+// ──────────────────────────────────────────────
+// 關卡展開卡片
+// ──────────────────────────────────────────────
+function StageCard({
+  stage,
+  questData,
+  onClose,
+  onComplete,
+}: {
+  stage: StageWithState;
+  questData: QuestData;
+  onClose: () => void;
+  onComplete: (code: string) => void;
+}) {
+  const [selfInputs, setSelfInputs] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+
+  const taskDefs = stage.taskCodes.map((tc) => TASK_DEFS.find((t) => t.code === tc)).filter(Boolean);
+
+  function isTaskDone(code: string) {
+    return (questData.tasks[code]?.count ?? 0) >= 1;
+  }
+
+  function handleSelfSubmit(code: string, minLen: number) {
+    const text = (selfInputs[code] ?? '').trim();
+    if (text.length < minLen) return;
+    setSubmitting(code);
+    setTimeout(() => {
+      onComplete(code);
+      setSubmitting(null);
+    }, 300);
+  }
+
+  // 任務的最小字數（根據 §4.2）
+  const MIN_CHARS: Record<string, number> = {
+    linkedin_create: 10,
+    club_join: 50,
+    senior_interview: 80,
+    exp_inventory: 30,
+    semester_plan: 20,
+    goal_set: 2,
+    weekly_review: 30,
+    learn_resource: 50,
+  };
+
+  return (
+    <div className={styles.stageCardOverlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={styles.stageCard} role="dialog" aria-modal="true" aria-label={`關卡 ${stage.code}：${stage.title}`}>
+        <div className={styles.stageCardHandle} />
+        <div className={styles.stageCardTitle}>關卡 {stage.code}：{stage.title}</div>
+        <div className={styles.stageCardMeta}>完成所有任務，關卡亮星！</div>
+        <div className={styles.stageTaskList}>
+          {taskDefs.map((t) => {
+            if (!t) return null;
+            const done = isTaskDone(t.code);
+            const isSelf = t.type === 'self';
+            const minLen = MIN_CHARS[t.code] ?? 10;
+            const inputVal = selfInputs[t.code] ?? '';
+            const canSubmit = inputVal.trim().length >= minLen;
+
+            return (
+              <div
+                key={t.code}
+                className={`${styles.stageTaskItem} ${done ? styles.stageTaskItemDone : ''}`}
+              >
+                <div className={`${styles.stageTaskCheck} ${done ? styles.stageTaskCheckDone : ''}`} aria-hidden="true">
+                  {done && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <div className={styles.stageTaskInfo}>
+                  <p className={`${styles.stageTaskName} ${done ? styles.stageTaskNameDone : ''}`}>{t.name}</p>
+                  <p className={styles.stageTaskMeta}>
+                    {t.type === 'ext' ? '外連 internx.me' : t.type === 'self' ? '自報' : '自動'}
+                  </p>
+                  {/* self 任務：附輸入框（未完成時顯示） */}
+                  {isSelf && !done && (
+                    <>
+                      <textarea
+                        className={styles.selfInput}
+                        placeholder={
+                          t.code === 'linkedin_create' ? '貼上你的 LinkedIn profile 連結' :
+                          t.code === 'club_join' ? '寫下你加入了什麼，以及想在這裡學什麼（至少 50 字）' :
+                          t.code === 'senior_interview' ? '寫下 3 個你問的問題與 1 個收穫（至少 80 字）' :
+                          t.code === 'exp_inventory' ? '列出 3 段經歷：做了什麼、學到什麼' :
+                          t.code === 'semester_plan' ? '寫下本學期的 3 個目標' :
+                          t.code === 'goal_set' ? '輸入你的目標職位（例：PM、UI 設計師）' :
+                          '填寫內容'
+                        }
+                        value={inputVal}
+                        onChange={(e) => setSelfInputs((prev) => ({ ...prev, [t.code]: e.target.value }))}
+                        rows={3}
+                      />
+                      <p className={styles.selfInputHint}>
+                        {inputVal.trim().length}/{minLen} 字{inputVal.trim().length < minLen ? `（再 ${minLen - inputVal.trim().length} 字）` : ' 達標'}
+                      </p>
+                      <button
+                        type="button"
+                        className={styles.selfSubmitBtn}
+                        disabled={!canSubmit || submitting === t.code}
+                        onClick={() => handleSelfSubmit(t.code, minLen)}
+                      >
+                        {submitting === t.code ? '送出中…' : '完成回報'}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <span className={styles.stageTaskPts}><CoinIcon size={12} />+{t.points}</span>
+              </div>
+            );
+          })}
+        </div>
+        <button type="button" className={styles.stageCardClose} onClick={onClose}>關閉</button>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// 主頁
+// ──────────────────────────────────────────────
 export default function IslandPage() {
   const [questData, setQuestData] = useState<QuestData | null>(null);
-  const [expandedZones, setExpandedZones] = useState<Set<string>>(new Set(['探索島']));
+  const [questLine, setQuestLine] = useState<QuestLine | null>(null);
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null); // null=尚未確定
+  const [openStage, setOpenStage] = useState<StageWithState | null>(null);
   const [joinedGuildIds, setJoinedGuildIds] = useState<string[]>([]);
   const [poppingTask, setPoppingTask] = useState<string | null>(null);
   const [flyingPts, setFlyingPts] = useState<Record<string, boolean>>({});
+  const [allTasksOpen, setAllTasksOpen] = useState(false);
   const popTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // 初始化
   useEffect(() => {
     bridgeWarRoomEvents();
+
+    // 讀公會
     try {
       const raw = localStorage.getItem('guild.joined');
       if (raw) setJoinedGuildIds(JSON.parse(raw));
     } catch { /* ignore */ }
+
+    // 讀 quest.v1
     const data = loadQuest();
     const today = getTodayStr();
     if (data.daily.date !== today || data.daily.taskCodes.length === 0) {
       const pool = getDailyPool(data.profile?.careerStatus ?? 'exploring');
-      data.daily = { date: today, taskCodes: pool.map((t) => t.code), doneCodes: data.daily.date === today ? data.daily.doneCodes : [] };
+      data.daily = {
+        date: today,
+        taskCodes: pool.map((t) => t.code),
+        doneCodes: data.daily.date === today ? data.daily.doneCodes : [],
+      };
       saveQuest(data);
     }
     setQuestData(data);
+
+    // 讀 profile.v1（不 import lib/profile.ts，直接讀 localStorage）
+    let profileV1: ProfileV1 | null = null;
+    try {
+      const raw = localStorage.getItem('profile.v1');
+      if (raw) profileV1 = JSON.parse(raw) as ProfileV1;
+    } catch { /* ignore */ }
+
+    setHasProfile(profileV1 !== null);
+
+    if (!profileV1) return; // 無 profile → 顯示 CTA，地圖隱藏
+
+    // quest.v1 沒有 questLine 且 profile.v1 存在 → 生成並存檔
+    if (!data.questLine) {
+      const completed = buildCompletedSet(data.tasks);
+      const ql = generateQuestLine(profileV1, completed, new Date().toISOString());
+      data.questLine = ql;
+      saveQuest(data);
+      setQuestLine(ql);
+    } else {
+      setQuestLine(data.questLine);
+    }
   }, []);
 
-  function toggleZone(zone: string) {
-    setExpandedZones((prev) => {
-      const next = new Set(prev);
-      if (next.has(zone)) next.delete(zone);
-      else next.add(zone);
-      return next;
-    });
-  }
+  // 完成自報任務的回呼
+  const handleSelfComplete = useCallback((code: string) => {
+    const data = loadQuest();
+    // 給點數
+    if (!data.tasks[code] || data.tasks[code].count < 1) {
+      const def = TASK_DEFS.find((t) => t.code === code);
+      const pts = def?.points ?? 20;
+      const today = getTodayStr();
+      const dayTotal = data.pointsLedger
+        .filter((e) => e.at.startsWith(today))
+        .reduce((s, e) => s + e.delta, 0);
+      const actualDelta = Math.min(pts, 200 - dayTotal);
+      if (actualDelta > 0) {
+        data.totalPoints += actualDelta;
+        data.pointsLedger.push({
+          id: Math.random().toString(36),
+          delta: actualDelta,
+          reason: def?.name ?? code,
+          at: new Date().toISOString(),
+          balanceAfter: data.totalPoints,
+        });
+      }
+    }
+    data.tasks[code] = { count: (data.tasks[code]?.count ?? 0) + 1, lastAt: new Date().toISOString() };
 
+    // 重算 questLine cleared 狀態
+    if (data.questLine) {
+      const completed = buildCompletedSet(data.tasks);
+      for (const ch of data.questLine.chapters) {
+        for (const stage of ch.stages) {
+          (stage as Stage & { cleared?: boolean }).cleared =
+            stage.taskCodes.every((tc) => completed.has(tc));
+        }
+      }
+      setQuestLine({ ...data.questLine });
+    }
+
+    saveQuest(data);
+    setQuestData({ ...data });
+    setOpenStage(null);
+  }, []);
+
+  // 今日任務完成
   function handleCompleteDaily(code: string) {
     if (poppingTask) return;
     const data = loadQuest();
@@ -133,7 +337,7 @@ export default function IslandPage() {
     }, 950);
   }
 
-  if (!questData) return null;
+  if (!questData || hasProfile === null) return null;
 
   const { level, name: levelName, nextAt } = getLevel(questData.totalPoints);
   const thresholds = [0, 100, 300, 700, 1500, 3000, 6000];
@@ -143,22 +347,43 @@ export default function IslandPage() {
     ? ((questData.totalPoints - levelBase) / (levelTop - levelBase)) * 100
     : 100;
 
-  const targetRole = questData.profile?.targetRoleId ? getRoleById(questData.profile.targetRoleId) : null;
-
   const dailyPool = getDailyPool(questData.profile?.careerStatus ?? 'exploring');
   const today = getTodayStr();
   const doneCodes = questData.daily.date === today ? questData.daily.doneCodes : [];
   const allDone = doneCodes.length >= dailyPool.length;
 
-  function getTaskProgress(zone: string) {
-    const tasks = TASK_DEFS.filter((t) => t.zone === zone || (zone === '探索島' && t.zone === '全'));
-    const done = tasks.filter((t) => (questData!.tasks[t.code]?.count ?? 0) >= (typeof t.limit === 'number' ? t.limit : 1)).length;
-    return { done, total: tasks.length };
-  }
-
-  // All badges (shown + locked)
   const ALL_BADGES = BADGES.map((b) => ({ id: b.id, name: b.name }));
   const earnedIds = new Set(questData.badges.map((b) => b.id));
+
+  // 建立帶狀態的章節
+  let chaptersWithState: ChapterWithState[] = [];
+  let currentStageCode: string | null = null;
+  if (questLine) {
+    const current = getCurrentStage(questLine);
+    currentStageCode = current?.stageCode ?? null;
+
+    let passedCurrent = false;
+    chaptersWithState = questLine.chapters.map((ch) => ({
+      ...ch,
+      stages: ch.stages.map((stage) => {
+        const cleared = !!(stage as Stage & { cleared?: boolean }).cleared;
+        let state: NodeState;
+        if (cleared) {
+          state = 'cleared';
+        } else if (!passedCurrent && stage.code === currentStageCode) {
+          state = 'current';
+          passedCurrent = true;
+        } else if (!passedCurrent) {
+          // 未 cleared 且還沒遇到 current → 這不應該發生，但防禦性處理
+          state = 'current';
+          passedCurrent = true;
+        } else {
+          state = 'locked';
+        }
+        return { ...stage, state } as StageWithState;
+      }),
+    }));
+  }
 
   return (
     <div className="site-wrapper">
@@ -167,27 +392,12 @@ export default function IslandPage() {
 
         {/* Game HUD */}
         <div className="game-hud">
-          {/* avatar with mascot */}
           <div className="hud-avatar">
-            <svg width="44" height="44" viewBox="0 0 120 120" fill="none" aria-hidden="true">
-              <path d="M60 18c22 0 34 16 34 36 0 22-14 38-34 38S26 76 26 54c0-20 12-36 34-36z" fill="#4DA3FF" stroke="#1861A8" strokeWidth="3"/>
-              <path d="M60 46c12 0 20 9 20 20 0 12-8 20-20 20s-20-8-20-20c0-11 8-20 20-20z" fill="#EAF4FF"/>
-              <circle cx="48" cy="50" r="4" fill="#1A2733"/><circle cx="72" cy="50" r="4" fill="#1A2733"/>
-              <circle cx="50" cy="48" r="1.5" fill="#fff"/><circle cx="74" cy="48" r="1.5" fill="#fff"/>
-              <path d="M54 59c3 3 9 3 12 0" stroke="#1A2733" strokeWidth="3" strokeLinecap="round"/>
-              <circle cx="40" cy="57" r="4" fill="#FF9FB0" opacity=".7"/><circle cx="80" cy="57" r="4" fill="#FF9FB0" opacity=".7"/>
-            </svg>
+            <BlueBlue size={44} />
           </div>
-
-          {/* XP info */}
           <div className="hud-info">
             <div className="hud-level-row">
               <span className="level-badge">Lv.{level} {levelName}</span>
-              {targetRole && (
-                <span style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>
-                  目標：<a href="/onboarding" style={{ color: 'var(--brand-dark)', fontWeight: 600 }}>{targetRole.name}</a>
-                </span>
-              )}
             </div>
             <div className="hud-xp-bar-wrap">
               <div className="hud-xp-bar-fill" style={{ width: `${Math.min(100, progressPct)}%` }} />
@@ -198,8 +408,6 @@ export default function IslandPage() {
               </div>
             )}
           </div>
-
-          {/* coins + streak */}
           <div className="hud-right">
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: '1rem', color: 'var(--sand-deep)' }}>
               <CoinIcon size={20} />
@@ -214,7 +422,7 @@ export default function IslandPage() {
           </div>
         </div>
 
-        {/* Daily tasks */}
+        {/* 今日任務 */}
         <div className="daily-card">
           <div className="daily-card-title">
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -259,10 +467,108 @@ export default function IslandPage() {
           )}
         </div>
 
-        {/* Guild card */}
+        {/* 無 profile → 顯示 CTA */}
+        {!hasProfile && (
+          <div className={styles.registerCta}>
+            <div className={styles.registerCtaTitle}>完成註冊，生成你的冒險地圖</div>
+            <div className={styles.registerCtaDesc}>
+              告訴我你的年級與目標，藍藍幫你規劃專屬的職涯關卡路線。
+            </div>
+            <a href="/onboarding" className={styles.registerCtaBtn}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 2l2.5 5h5.5l-4.5 3.5 1.5 5L10 13l-5 2.5 1.5-5L2 7h5.5Z" fill="#fff" opacity=".9"/>
+              </svg>
+              開始生成地圖
+            </a>
+          </div>
+        )}
+
+        {/* 關卡地圖 */}
+        {hasProfile && questLine && (
+          <div className={styles.questMapSection}>
+            <div className={styles.questMapTitle}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M3 17l4-11 7 4 3-8" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="3" cy="17" r="1.5" fill="var(--brand)"/>
+                <circle cx="17" cy="2" r="1.5" fill="var(--brand)"/>
+              </svg>
+              你的冒險地圖
+              <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--ink-2)' }}>
+                {questLine.trackId === 'explorer' ? '探索軌' : questLine.trackId === 'builder' ? '準備軌' : '衝刺軌'}
+              </span>
+            </div>
+
+            <div className={styles.questMap}>
+              {chaptersWithState.map((ch, chIdx) => (
+                <div key={ch.id} style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  {/* 章旗橫幅 */}
+                  <div className={styles.chapterBanner}>
+                    <div className={styles.chapterBannerLine} />
+                    <div className={styles.chapterBannerFlag}><FlagIcon color="var(--brand)" /></div>
+                    <div className={styles.chapterBannerText}>{ch.title}</div>
+                    <div className={styles.chapterBannerFlag}><FlagIcon color="var(--brand)" /></div>
+                    <div className={styles.chapterBannerLine} />
+                  </div>
+
+                  {/* 節點路徑 */}
+                  <div className={styles.pathContainer}>
+                    {ch.stages.map((stage, stageIdx) => {
+                      const isLeft = stageIdx % 2 === 0;
+                      const isLast = stageIdx === ch.stages.length - 1 && chIdx === chaptersWithState.length - 1;
+                      const nodeState = stage.state;
+                      const isCurrent = nodeState === 'current';
+                      const isCleared = nodeState === 'cleared';
+                      const isLocked = nodeState === 'locked';
+
+                      return (
+                        <div key={stage.code} style={{ width: '100%', position: 'relative' }}>
+                          <div
+                            className={`${styles.nodeRow} ${isLeft ? styles.alignLeft : styles.alignRight}`}
+                          >
+                            <div
+                              className={`${styles.stageNode} ${isCurrent ? styles.nodeCurrent : isCleared ? styles.nodeCleared : styles.nodeLocked} ${isCurrent ? styles.clickable : ''}`}
+                              onClick={() => isCurrent && setOpenStage(stage)}
+                              role={isCurrent ? 'button' : undefined}
+                              tabIndex={isCurrent ? 0 : undefined}
+                              onKeyDown={(e) => isCurrent && e.key === 'Enter' && setOpenStage(stage)}
+                              aria-label={isCurrent ? `關卡 ${stage.code}：${stage.title}（點擊展開）` : undefined}
+                            >
+                              {/* 脈動圈 */}
+                              {isCurrent && <div className={styles.pulseRing} aria-hidden="true" />}
+
+                              <div className={styles.nodeCircle}>
+                                {isCleared ? <StarIcon filled={true} /> : isCurrent ? <BlueBlue size={32} /> : <LockIcon />}
+                              </div>
+                              <span className={`${styles.nodeLabel} ${isCurrent ? styles.nodeLabelCurrent : isCleared ? styles.nodeLabelCleared : ''}`}>
+                                {stage.code}
+                              </span>
+                              <span className={`${styles.nodeLabel}`} style={{ fontSize: '0.625rem', maxWidth: 72 }}>
+                                {stage.title}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 虛線連線（非最後一個節點） */}
+                          {!isLast && (
+                            <div style={{ display: 'flex', justifyContent: isLeft ? 'flex-start' : 'flex-end', paddingLeft: isLeft ? 50 : 0, paddingRight: isLeft ? 0 : 50, marginBottom: 0 }}>
+                              <svg width="2" height="20" aria-hidden="true" style={{ display: 'block' }}>
+                                <line x1="1" y1="0" x2="1" y2="20" stroke="var(--line)" strokeWidth="2" strokeDasharray="4 4"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 公會卡 */}
         <div className="guild-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            {/* teal guild icon */}
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <circle cx="16" cy="16" r="14" stroke="var(--teal)" strokeWidth="2"/>
               <path d="M10 22c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="var(--teal)" strokeWidth="1.8" strokeLinecap="round"/>
@@ -289,120 +595,68 @@ export default function IslandPage() {
           </div>
         </div>
 
-        {/* Zone cards with path connector */}
-        <div className="zone-path" style={{ gap: 0 }}>
-          {ZONES.map((zone, idx) => {
-            const { done, total } = getTaskProgress(zone);
-            const expanded = expandedZones.has(zone);
-            const zoneTasks = TASK_DEFS.filter((t) => t.zone === zone || (zone === '探索島' && t.zone === '全'));
-            const colors = ZONE_COLORS[zone];
-
-            return (
-              <div key={zone} className={`zone-path-item${idx > 0 ? '' : ''}`} style={{ marginBottom: 10, marginTop: idx > 0 ? 10 : 0 }}>
-                {/* dashed path line between cards */}
-                {idx > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38, marginBottom: 4 }}>
-                    <svg width="2" height="16" aria-hidden="true">
-                      <line x1="1" y1="0" x2="1" y2="16" stroke="var(--line)" strokeWidth="2" strokeDasharray="3,3"/>
-                    </svg>
-                  </div>
-                )}
-                <div className="zone-card">
-                  <button type="button" className="zone-card-header" onClick={() => toggleZone(zone)} aria-expanded={expanded}>
-                    {/* scene icon */}
-                    <div className="zone-card-icon" style={{ background: colors.soft, borderColor: colors.main }}>
-                      {ZONE_SCENE[zone]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="zone-card-title">{zone}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        {/* mini XP bar */}
-                        <div style={{ flex: 1, height: 6, background: 'var(--line)', borderRadius: 99 }}>
-                          <div style={{ height: '100%', borderRadius: 99, background: colors.main, width: total > 0 ? `${(done / total) * 100}%` : '0%', transition: 'width .3s' }} />
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)', fontWeight: 600 }}>{done}/{total}</span>
-                      </div>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--ink-2)' }}>
-                      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  {/* full progress bar */}
-                  <div className="zone-card-progress-bar">
-                    <div className="zone-card-progress-fill" style={{ width: total > 0 ? `${(done / total) * 100}%` : '0%', background: `linear-gradient(90deg, ${colors.main}, ${colors.deep})` }} />
-                  </div>
-                  {expanded && (
-                    <div className="zone-card-body">
-                      {zoneTasks.map((t) => {
-                        const count = questData!.tasks[t.code]?.count ?? 0;
-                        const maxCount = typeof t.limit === 'number' ? t.limit : 1;
-                        const isDone = count >= maxCount;
-                        return (
-                          <div key={t.code} className="task-item">
-                            <div className={`task-check${isDone ? ' task-check-done' : ''}`} aria-hidden="true">
-                              {isDone && (
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                  <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              )}
-                            </div>
-                            <div className="task-info">
-                              <p className={`task-name${isDone ? ' task-name-done' : ''}`}>{t.name}</p>
-                              <p className="task-meta">
-                                {t.type === 'ext' ? '外連' : t.type === 'self' ? '自報' : '自動'}
-                                {typeof t.limit !== 'number' && ` · ${t.limit.replace(/_/g, ' ')}`}
-                              </p>
-                            </div>
-                            <span className="task-pts"><CoinIcon size={12} />+{t.points}</span>
+        {/* 全部任務（折疊） */}
+        <div className="card" style={{ marginTop: 16, overflow: 'hidden' }}>
+          <button type="button" className={styles.allTasksToggle} onClick={() => setAllTasksOpen((v) => !v)} aria-expanded={allTasksOpen}>
+            全部任務（{Object.values(questData.tasks).filter((t) => t.count >= 1).length}/{TASK_DEFS.filter((t) => typeof t.limit === 'number').length} 已完成）
+            <svg
+              width="16" height="16" viewBox="0 0 16 16" fill="none"
+              className={`${styles.allTasksToggleChevron} ${allTasksOpen ? styles.allTasksToggleChevronOpen : ''}`}
+              aria-hidden="true"
+            >
+              <path d="M4 6l4 4 4-4" stroke="var(--ink-2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {allTasksOpen && (
+            <div style={{ padding: '0 4px 8px' }}>
+              {['探索島', '履歷工坊', '訓練場', '戰情室', '升級島'].map((zone) => {
+                const zoneTasks = TASK_DEFS.filter((t) => t.zone === zone || (zone === '探索島' && t.zone === '全'));
+                return (
+                  <div key={zone} style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink-2)', margin: '10px 12px 6px' }}>{zone}</div>
+                    {zoneTasks.map((t) => {
+                      const count = questData.tasks[t.code]?.count ?? 0;
+                      const maxCount = typeof t.limit === 'number' ? t.limit : 1;
+                      const isDone = count >= maxCount;
+                      return (
+                        <div key={t.code} className="task-item">
+                          <div className={`task-check${isDone ? ' task-check-done' : ''}`} aria-hidden="true">
+                            {isDone && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Badges */}
-        <div className="card" style={{ marginTop: 20 }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 14 }}>
-            獎章（{questData.badges.length}/{ALL_BADGES.length}）
-          </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {ALL_BADGES.map(({ id, name }) => {
-              const earned = earnedIds.has(id);
-              return (
-                <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    border: `3px solid ${earned ? 'var(--sand-deep)' : 'var(--line)'}`,
-                    background: earned ? 'var(--sand-soft)' : 'var(--bg)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    filter: earned ? 'none' : 'grayscale(1)',
-                    opacity: earned ? 1 : 0.5,
-                    position: 'relative',
-                  }}>
-                    {earned ? (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                        <polygon points="10,2 12.5,7.5 18,8.5 14,12.5 15,18 10,15.5 5,18 6,12.5 2,8.5 7.5,7.5" fill="var(--sand-deep)" stroke="var(--sand-deep)" strokeWidth="1" strokeLinejoin="round"/>
-                      </svg>
-                    ) : (
-                      <LockIcon />
-                    )}
+                          <div className="task-info">
+                            <p className={`task-name${isDone ? ' task-name-done' : ''}`}>{t.name}</p>
+                            <p className="task-meta">
+                              {t.type === 'ext' ? '外連' : t.type === 'self' ? '自報' : '自動'}
+                              {typeof t.limit !== 'number' && ` · ${t.limit.replace(/_/g, ' ')}`}
+                            </p>
+                          </div>
+                          <span className="task-pts"><CoinIcon size={12} />+{t.points}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span style={{ fontSize: '0.6875rem', color: earned ? 'var(--ink)' : 'var(--ink-2)', fontWeight: 600, textAlign: 'center' }}>
-                    {name}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </main>
       <Footer />
+
+      {/* 關卡展開卡片 */}
+      {openStage && questData && (
+        <StageCard
+          stage={openStage}
+          questData={questData}
+          onClose={() => setOpenStage(null)}
+          onComplete={handleSelfComplete}
+        />
+      )}
     </div>
   );
 }
