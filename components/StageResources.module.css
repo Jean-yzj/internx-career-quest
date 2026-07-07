@@ -1,0 +1,128 @@
+/* StageResources.module.css — Agent E 擁有 */
+/* 藍藍的錦囊：關卡展開卡的資源區塊 */
+
+.container {
+  margin-top: 20px;
+  border-top: 1.5px solid var(--line);
+  padding-top: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.headerIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.headerTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--sky-deep, #1861A8);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--brand-soft, #EAF4FF);
+  border: 1.5px solid var(--brand, #4DA3FF);
+  border-opacity: 0.4;
+  border-color: rgba(77, 163, 255, 0.35);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.item:hover {
+  background: rgba(77, 163, 255, 0.12);
+  border-color: var(--brand, #4DA3FF);
+}
+
+.itemNoLink {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg, #F8FAFC);
+  border: 1.5px solid var(--line, #E4EBF0);
+  color: inherit;
+}
+
+.typeIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(77, 163, 255, 0.15);
+}
+
+.itemNoLink .typeIcon {
+  background: var(--line, #E4EBF0);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sky-deep, #1861A8);
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+.itemNoLink .title {
+  color: var(--ink, #1A2733);
+}
+
+.note {
+  font-size: 0.75rem;
+  color: var(--ink-2, #4A6172);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.extBadge {
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+}
+
+/* mobile 390 */
+@media (max-width: 430px) {
+  .container {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .item,
+  .itemNoLink {
+    padding: 9px 10px;
+  }
+
+  .title {
+    font-size: 0.8125rem;
+  }
+}

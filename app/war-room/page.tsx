@@ -14,6 +14,7 @@ import DueStrip from '@/components/DueStrip';
 import EditDrawer from '@/components/EditDrawer';
 import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
+import JobsRadar from '@/components/JobsRadar';
 import { loadData, addApplication, updateApplication, deleteApplication, mergeImport } from '@/lib/store';
 import type { WarRoomData } from '@/lib/types';
 import { z } from 'zod';
@@ -122,6 +123,44 @@ export default function WarRoomPage() {
     setActiveTab('list');
   }, []);
 
+  // 從職缺雷達預填職缺
+  const handleAddFromRadar = useCallback((prefill: {
+    company: string; title: string; link: string;
+    location?: string; salaryText?: string;
+  }) => {
+    const now = new Date().toISOString();
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    const app: Application = {
+      id: generateId(),
+      company: prefill.company,
+      title: prefill.title,
+      link: prefill.link,
+      industry: '其他',
+      status: 'wishlist',
+      stars: 3,
+      deadline: undefined,
+      appliedAt: undefined,
+      offerDeadline: undefined,
+      interviews: [],
+      skills: [],
+      salaryText: prefill.salaryText,
+      location: prefill.location,
+      resumeNote: undefined,
+      note: undefined,
+      jdRaw: '',
+      source: 'manual',
+      statusHistory: [{ to: 'wishlist', at: now }],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const data = addApplication(app);
+    setApplications(data.applications);
+    setActiveTab('list');
+  }, []);
+
   const handleExportIcs = useCallback(() => {
     const content = generateIcs(applications);
     downloadIcs(content);
@@ -209,6 +248,8 @@ export default function WarRoomPage() {
         {pendingResult && (
           <ConfirmCard result={pendingResult.result} rawText={pendingResult.rawText} onConfirm={handleConfirm} onCancel={handleCancelConfirm} />
         )}
+
+        <JobsRadar onAddJob={handleAddFromRadar} />
 
         <DueStrip applications={applications} onOpenCard={handleOpenCard} />
 

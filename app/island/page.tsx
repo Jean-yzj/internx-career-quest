@@ -13,6 +13,8 @@ import { getTodayStr } from '@/lib/types';
 import { generateQuestLine, buildCompletedSet, getCurrentStage } from '@/lib/quest-line';
 import type { QuestLine, Chapter, Stage, ProfileV1 } from '@/lib/quest-line';
 import { GUILD_DEFS } from '@/lib/guilds';
+import { getStageResources } from '@/lib/resources';
+import StageResources from '@/components/StageResources';
 import styles from './island.module.css';
 
 // ──────────────────────────────────────────────
@@ -106,11 +108,15 @@ interface ChapterWithState extends Omit<Chapter, 'stages'> {
 function StageCard({
   stage,
   questData,
+  trackId,
+  goalRoleId,
   onClose,
   onComplete,
 }: {
   stage: StageWithState;
   questData: QuestData;
+  trackId: 'explorer' | 'builder' | 'sprint';
+  goalRoleId: string | null;
   onClose: () => void;
   onComplete: (code: string) => void;
 }) {
@@ -214,6 +220,9 @@ function StageCard({
             );
           })}
         </div>
+        {/* 藍藍的錦囊：階段資源層 */}
+        <StageResources resources={getStageResources(trackId, stage.code, goalRoleId)} />
+
         <button type="button" className={styles.stageCardClose} onClick={onClose}>關閉</button>
       </div>
     </div>
@@ -232,6 +241,7 @@ export default function IslandPage() {
   const [poppingTask, setPoppingTask] = useState<string | null>(null);
   const [flyingPts, setFlyingPts] = useState<Record<string, boolean>>({});
   const [allTasksOpen, setAllTasksOpen] = useState(false);
+  const [goalRoleId, setGoalRoleId] = useState<string | null>(null);
   const popTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // 初始化
@@ -266,6 +276,7 @@ export default function IslandPage() {
     } catch { /* ignore */ }
 
     setHasProfile(profileV1 !== null);
+    if (profileV1) setGoalRoleId(profileV1.goalRoleId ?? null);
 
     if (!profileV1) return; // 無 profile → 顯示 CTA，地圖隱藏
 
@@ -653,6 +664,8 @@ export default function IslandPage() {
         <StageCard
           stage={openStage}
           questData={questData}
+          trackId={questLine?.trackId ?? 'explorer'}
+          goalRoleId={goalRoleId}
           onClose={() => setOpenStage(null)}
           onComplete={handleSelfComplete}
         />
