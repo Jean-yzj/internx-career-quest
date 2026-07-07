@@ -5,7 +5,11 @@
  *
  * 查找順序：精確 role+stage → track+stage → 通用(*)
  * 回傳 ≤ 4 條（article/video ≤2 + guide 1 + club 適時）
+ * 2026-07-08：接入其餘 9 職位（batch-a 商管 5、batch-b 技術 4），全部 URL 驗證過
  */
+
+import { BATCH_A_ENTRIES } from './resources-batch-a';
+import { BATCH_B_ENTRIES } from './resources-batch-b';
 
 export interface StageResource {
   type: 'article' | 'video' | 'guide' | 'club';
@@ -419,8 +423,8 @@ const GENERIC_RESOURCES_RESUME: StageResource[] = [
   },
   {
     type: 'guide',
-    title: '職位專屬內容陸續上島',
-    note: '目前顯示的是通用資源；你的職位專屬文章、社群建議，以及針對你目標職缺的面試攻略，v1.4 會陸續加入。',
+    title: '先設定目標職位，解鎖專屬導讀',
+    note: '到個人頁選一個目標職位，這裡就會換成該職位的履歷寫法、社群建議與面試攻略。',
   },
 ];
 
@@ -448,14 +452,17 @@ const GENERIC_RESOURCES_INTERVIEW: StageResource[] = [
   },
   {
     type: 'guide',
-    title: '職位專屬內容陸續上島',
-    note: '你的職位面試題型、常見問題與心得文，v1.4 會陸續加入。',
+    title: '先設定目標職位，解鎖面試攻略',
+    note: '到個人頁選一個目標職位，這裡就會換成該職位的面試常見題與練習法。',
   },
 ];
 
 // ──────────────────────────────────────────────
 // 合併所有 PM key 到一個 map
 // ──────────────────────────────────────────────
+
+// 其餘 9 職位的三段 key map（roleId:trackId:stageCode）
+const EXTRA_ROLE_MAP: ResourceMap = { ...BATCH_A_ENTRIES, ...BATCH_B_ENTRIES };
 
 const PM_RESOURCE_MAP: ResourceMap = {
   // 探索章（任何軌都可能出現 0-x 關）
@@ -495,13 +502,19 @@ export function getStageResources(
 ): StageResource[] {
   const key = `${trackId}:${stageCode}`;
 
-  // 1. PM 精確命中
+  // 1. PM 精確命中（兩段 key：trackId:stageCode）
   if (goalRoleId === 'product_manager' && PM_RESOURCE_MAP[key]) {
     const items = PM_RESOURCE_MAP[key];
     if (items.length > 0) return items.slice(0, 4);
   }
 
-  // 2. 非 PM 或 PM 但 key 不在 map：回通用組
+  // 1b. 其餘 9 職位精確命中（三段 key：roleId:trackId:stageCode）
+  if (goalRoleId) {
+    const roleItems = EXTRA_ROLE_MAP[`${goalRoleId}:${key}`];
+    if (roleItems && roleItems.length > 0) return roleItems.slice(0, 4);
+  }
+
+  // 2. 未設目標職位，或該職位此關無專屬條目：回通用組
   const chapterNum = parseInt(stageCode.split('-')[0] ?? '0', 10);
   const stageNum = parseInt(stageCode.split('-')[1] ?? '0', 10);
 
