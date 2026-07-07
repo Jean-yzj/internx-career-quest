@@ -366,6 +366,27 @@
   background: var(--brand-deep);
 }
 
+.stageTaskCta {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 16px;
+  border-radius: 99px;
+  background: var(--sky-soft);
+  color: var(--brand-deep);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1.5px solid var(--brand-soft);
+  transition: background 0.15s;
+}
+
+.stageTaskCta:hover {
+  background: var(--brand-soft);
+  color: #fff;
+}
+
 .selfSubmitBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

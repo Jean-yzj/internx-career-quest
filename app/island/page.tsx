@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
@@ -109,6 +110,25 @@ interface ChapterWithState extends Omit<Chapter, 'stages'> {
 // ──────────────────────────────────────────────
 // 關卡展開卡片
 // ──────────────────────────────────────────────
+// 關卡任務的一鍵前往（僅站內 auto/ext 任務；目的地 100% 是本站路由）
+const STAGE_TASK_ROUTE: Record<string, { href: string; label: string }> = {
+  ability_quiz: { href: '/quiz/ability', label: '去做能力測驗' },
+  interest_quiz: { href: '/quiz/interest', label: '去做興趣測驗' },
+  resume_analyzed: { href: '/analysis', label: '去分析履歷' },
+  resume_improve: { href: '/analysis', label: '去重新分析' },
+  quantified_added: { href: '/analysis', label: '去更新履歷分析' },
+  portfolio_added: { href: '/analysis', label: '去更新履歷分析' },
+  app_first: { href: '/war-room', label: '去戰情室收職缺' },
+  app_five: { href: '/war-room', label: '去戰情室收職缺' },
+  app_deadline_set: { href: '/war-room', label: '去設定截止日' },
+  app_submit_first: { href: '/war-room', label: '去戰情室投遞' },
+  interview_log: { href: '/war-room', label: '去記錄面試' },
+  weekly_review: { href: '/war-room', label: '去做投遞回顧' },
+  radar_check: { href: '/war-room', label: '去看新職缺' },
+  join_guild: { href: '/guilds', label: '去公會大廳' },
+  guild_intro: { href: '/guilds', label: '去公會發文' },
+};
+
 function StageCard({
   stage,
   questData,
@@ -217,6 +237,18 @@ function StageCard({
                         {submitting === t.code ? '送出中…' : '完成回報'}
                       </button>
                     </>
+                  )}
+                  {/* auto/ext 任務：一鍵前往對應功能頁 */}
+                  {!isSelf && !done && STAGE_TASK_ROUTE[t.code] && (
+                    <Link
+                      href={STAGE_TASK_ROUTE[t.code].href}
+                      className={styles.stageTaskCta}
+                    >
+                      {STAGE_TASK_ROUTE[t.code].label}
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </Link>
                   )}
                 </div>
                 <span className={styles.stageTaskPts}><CoinIcon size={12} />+{t.points}</span>
