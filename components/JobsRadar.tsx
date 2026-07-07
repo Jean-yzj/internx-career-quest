@@ -25,6 +25,8 @@ interface JobItem {
 interface JobsRadarProps {
   /** war-room 頁傳入：預填職缺並打開確認卡 */
   onAddJob?: (prefill: { company: string; title: string; link: string; location?: string; salaryText?: string }) => void;
+  /** island 關卡卡片內嵌模式：最多 3 筆、無下拉、底部連 /war-room */
+  compact?: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -40,7 +42,7 @@ const ROLE_LABELS: Record<string, string> = {
   finance:          '金融實習',
 };
 
-export default function JobsRadar({ onAddJob }: JobsRadarProps) {
+export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,6 +82,62 @@ export default function JobsRadar({ onAddJob }: JobsRadarProps) {
   if (!dbAvailable) return null;
 
   const roleLabel = selectedRole ? (ROLE_LABELS[selectedRole] ?? selectedRole) : null;
+
+  // compact 模式：island 關卡內嵌，最多 3 筆，底部連 /war-room
+  if (compact) {
+    return (
+      <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <svg width={14} height={14} viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <circle cx="9" cy="9" r="7" stroke="var(--brand)" strokeWidth="1.5" />
+            <circle cx="9" cy="9" r="4" stroke="var(--brand)" strokeWidth="1.5" opacity=".5" />
+            <circle cx="9" cy="9" r="1.5" fill="var(--brand)" />
+          </svg>
+          <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--ink)' }}>相關職缺</span>
+          {roleLabel && <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>· {roleLabel}</span>}
+        </div>
+        {loading && <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>掃描中...</p>}
+        {!loading && error && <p style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>{error}</p>}
+        {!loading && !error && jobs.length === 0 && selectedRole && (
+          <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>尚無快取職缺，12 小時更新一次。</p>
+        )}
+        {!loading && jobs.length > 0 && (
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {jobs.slice(0, 3).map((job) => (
+              <li key={job.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--ink)', marginBottom: 2 }}>{job.title}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>
+                    {job.company}{job.location ? ` · ${job.location}` : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+                  <a href={job.url} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: '0.6875rem', color: 'var(--brand-dark)', textDecoration: 'underline' }}
+                    aria-label={`看原文：${job.title}`}
+                  >看原文</a>
+                  {onAddJob && (
+                    <button type="button"
+                      disabled={addedIds.has(job.id)}
+                      onClick={() => {
+                        onAddJob({ company: job.company, title: job.title, link: job.url, location: job.location ?? undefined, salaryText: job.salary_text ?? undefined });
+                        setAddedIds((prev) => new Set([...prev, job.id]));
+                      }}
+                      style={{ fontSize: '0.6875rem', background: addedIds.has(job.id) ? 'var(--line)' : 'var(--brand)', color: addedIds.has(job.id) ? 'var(--ink-2)' : '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: addedIds.has(job.id) ? 'default' : 'pointer', fontWeight: 600 }}
+                      aria-label={`收進戰情室：${job.title}`}
+                    >
+                      {addedIds.has(job.id) ? '已收' : '收進'}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <a href="/war-room" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.75rem', color: 'var(--brand-dark)', fontWeight: 600, textDecoration: 'underline' }}>前往戰情室查看全部 &gt;</a>
+      </div>
+    );
+  }
 
   return (
     <section className="card" style={{ marginBottom: 20 }} aria-label="職缺雷達">

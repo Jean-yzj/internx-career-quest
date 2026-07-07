@@ -130,7 +130,7 @@ function deepCloneChapters(chapters) {
   }));
 }
 
-function generateQuestLine(profile, completedTaskCodes = new Set(), generatedAt = new Date().toISOString()) {
+function generateQuestLine(profile, completedTaskCodes = new Set(), generatedAt = new Date().toISOString(), analysis) {
   const { grade, hasResume, goalRoleId } = profile;
 
   // 選軌
@@ -173,6 +173,35 @@ function generateQuestLine(profile, completedTaskCodes = new Set(), generatedAt 
       }
       // 重新編號
       ch1.stages = ch1.stages.map((s, i) => ({ ...s, code: `${ch1.id}-${i}` }));
+    }
+  }
+
+  // analysis → 插入「藍藍的特訓班」章（非 explorer 軌）
+  if (analysis && trackId !== 'explorer') {
+    const trainingStages = [];
+    if (analysis.checklist['portfolio'] === false) {
+      trainingStages.push({ code: 'T-1', title: '特訓：作品集起步', taskCodes: ['portfolio_added'] });
+    }
+    if (analysis.checklist['quantified'] === false) {
+      trainingStages.push({ code: 'T-2', title: '特訓：讓成果有數字', taskCodes: ['quantified_added'] });
+    }
+    if (analysis.overall < 70) {
+      trainingStages.push({ code: 'T-3', title: '特訓：照建議改一版', taskCodes: ['resume_improve'] });
+    }
+    if (trainingStages.length > 0) {
+      const anchorChIdx = chapters.findIndex((ch) =>
+        ch.stages.some((s) =>
+          s.taskCodes.includes('resume_analyzed') || s.taskCodes.includes('resume_improve')
+        )
+      );
+      if (anchorChIdx !== -1) {
+        const trainingChapter = {
+          id: -1,
+          title: '藍藍的特訓班',
+          stages: trainingStages,
+        };
+        chapters.splice(anchorChIdx + 1, 0, trainingChapter);
+      }
     }
   }
 
@@ -316,6 +345,58 @@ console.log('\n8. 已完成任務的關自動 cleared');
   check('1-1 cleared=true（interest_quiz 已完成）', stage11?.cleared === true, `cleared=${stage11?.cleared}`);
   const stage12 = ch1?.stages.find((s) => s.code === '1-2');
   check('1-2 cleared=false（role_explore_3 未完成）', stage12?.cleared === false, `cleared=${stage12?.cleared}`);
+}
+
+// ──────────────────────────────────────────────
+// 測試 9：帶 analysis（portfolio:false, quantified:false, overall:60）→ 特訓班章 ≤3 關在分析章後
+// ──────────────────────────────────────────────
+console.log('\n9. builder + analysis(portfolio:false, quantified:false, overall:60) → 特訓班章');
+{
+  const profile = { grade: 'y3', hasResume: true, hasClubExp: false, hasApplied: false, goalRoleId: 'pm' };
+  const analysis = { checklist: { portfolio: false, quantified: false }, overall: 60 };
+  const ql = generateQuestLine(profile, new Set(), '2026-01-01T00:00:00.000Z', analysis);
+  const trainingCh = ql.chapters.find((c) => c.title === '藍藍的特訓班');
+  check('有「藍藍的特訓班」章', !!trainingCh, `chapters=${ql.chapters.map((c) => c.title).join(', ')}`);
+  check('特訓班關卡數 ≤ 3', (trainingCh?.stages?.length ?? 0) <= 3, `stages=${trainingCh?.stages?.length}`);
+  check('含 T-1（portfolio_added）', trainingCh?.stages?.some((s) => s.taskCodes.includes('portfolio_added')) ?? false);
+  check('含 T-2（quantified_added）', trainingCh?.stages?.some((s) => s.taskCodes.includes('quantified_added')) ?? false);
+  check('含 T-3（resume_improve，overall<70）', trainingCh?.stages?.some((s) => s.taskCodes.includes('resume_improve')) ?? false);
+  // 特訓班章應在含 resume_analyzed 章之後
+  const anchorIdx = ql.chapters.findIndex((c) => c.stages.some((s) => s.taskCodes.includes('resume_analyzed') || s.taskCodes.includes('resume_improve')));
+  const trainingIdx = ql.chapters.findIndex((c) => c.title === '藍藍的特訓班');
+  check('特訓班章在分析章之後', trainingIdx > anchorIdx && anchorIdx !== -1, `anchorIdx=${anchorIdx} trainingIdx=${trainingIdx}`);
+}
+
+// ──────────────────────────────────────────────
+// 測試 10：不帶 analysis → 無特訓班章
+// ──────────────────────────────────────────────
+console.log('\n10. 不帶 analysis → 無特訓班章');
+{
+  const profile = { grade: 'y3', hasResume: true, hasClubExp: false, hasApplied: false, goalRoleId: 'pm' };
+  const ql = generateQuestLine(profile, new Set(), '2026-01-01T00:00:00.000Z');
+  check('無「藍藍的特訓班」章', !ql.chapters.some((c) => c.title === '藍藍的特訓班'));
+}
+
+// ──────────────────────────────────────────────
+// 測試 11：overall 80 且全 true → 無特訓班章
+// ──────────────────────────────────────────────
+console.log('\n11. overall=80 且 checklist 全 true → 無特訓班章');
+{
+  const profile = { grade: 'y3', hasResume: true, hasClubExp: false, hasApplied: false, goalRoleId: 'pm' };
+  const analysis = { checklist: { portfolio: true, quantified: true }, overall: 80 };
+  const ql = generateQuestLine(profile, new Set(), '2026-01-01T00:00:00.000Z', analysis);
+  check('無「藍藍的特訓班」章', !ql.chapters.some((c) => c.title === '藍藍的特訓班'));
+}
+
+// ──────────────────────────────────────────────
+// 測試 12：explorer 軌帶 analysis → 不插特訓班章
+// ──────────────────────────────────────────────
+console.log('\n12. explorer 軌帶 analysis → 不插特訓班章');
+{
+  const profile = { grade: 'y1', hasResume: false, hasClubExp: false, hasApplied: false, goalRoleId: 'pm' };
+  const analysis = { checklist: { portfolio: false, quantified: false }, overall: 50 };
+  const ql = generateQuestLine(profile, new Set(), '2026-01-01T00:00:00.000Z', analysis);
+  check('explorer 軌不插特訓班章', !ql.chapters.some((c) => c.title === '藍藍的特訓班'));
 }
 
 console.log(`\n=== 結果：${pass} PASS / ${fail} FAIL ===\n`);

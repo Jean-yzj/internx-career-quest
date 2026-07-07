@@ -15,6 +15,10 @@ import type { QuestLine, Chapter, Stage, ProfileV1 } from '@/lib/quest-line';
 import { GUILD_DEFS } from '@/lib/guilds';
 import { getStageResources } from '@/lib/resources';
 import StageResources from '@/components/StageResources';
+import JobsRadar from '@/components/JobsRadar';
+import AddToHome from '@/components/AddToHome';
+import { addApplication } from '@/lib/store';
+import type { Application } from '@/lib/types';
 import styles from './island.module.css';
 
 // ──────────────────────────────────────────────
@@ -223,6 +227,40 @@ function StageCard({
         {/* 藍藍的錦囊：階段資源層 */}
         <StageResources resources={getStageResources(trackId, stage.code, goalRoleId)} />
 
+        {/* 職缺雷達（關卡含投遞任務時內嵌） */}
+        {(stage.taskCodes.includes('app_first') || stage.taskCodes.includes('app_five')) && (
+          <JobsRadar
+            compact
+            onAddJob={(prefill) => {
+              const now = new Date().toISOString();
+              const app: Application = {
+                id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+                company: prefill.company,
+                title: prefill.title,
+                link: prefill.link,
+                industry: '其他',
+                status: 'wishlist',
+                stars: 3,
+                deadline: undefined,
+                appliedAt: undefined,
+                offerDeadline: undefined,
+                interviews: [],
+                skills: [],
+                salaryText: prefill.salaryText,
+                location: prefill.location,
+                resumeNote: undefined,
+                note: undefined,
+                jdRaw: '',
+                source: 'manual',
+                statusHistory: [{ to: 'wishlist', at: now }],
+                createdAt: now,
+                updatedAt: now,
+              };
+              addApplication(app);
+            }}
+          />
+        )}
+
         <button type="button" className={styles.stageCardClose} onClick={onClose}>關閉</button>
       </div>
     </div>
@@ -242,6 +280,7 @@ export default function IslandPage() {
   const [flyingPts, setFlyingPts] = useState<Record<string, boolean>>({});
   const [allTasksOpen, setAllTasksOpen] = useState(false);
   const [goalRoleId, setGoalRoleId] = useState<string | null>(null);
+  const [justCleared, setJustCleared] = useState(false);
   const popTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // 初始化
@@ -280,10 +319,18 @@ export default function IslandPage() {
 
     if (!profileV1) return; // 無 profile → 顯示 CTA，地圖隱藏
 
-    // quest.v1 沒有 questLine 且 profile.v1 存在 → 生成並存檔
-    if (!data.questLine) {
+    // 如有 analysis，萃取摘要供閉環使用
+    const analysisSummary = data.analysis
+      ? { checklist: data.analysis.checklist ?? {}, overall: data.analysis.overall }
+      : undefined;
+
+    // 判斷是否需要（重）生成 questLine
+    const hasTrainingChapter = data.questLine?.chapters.some((c) => c.title === '藍藍的特訓班') ?? false;
+    const needsTraining = analysisSummary !== undefined && !hasTrainingChapter;
+
+    if (!data.questLine || needsTraining) {
       const completed = buildCompletedSet(data.tasks);
-      const ql = generateQuestLine(profileV1, completed, new Date().toISOString());
+      const ql = generateQuestLine(profileV1, completed, new Date().toISOString(), analysisSummary);
       data.questLine = ql;
       saveQuest(data);
       setQuestLine(ql);
@@ -317,16 +364,20 @@ export default function IslandPage() {
     }
     data.tasks[code] = { count: (data.tasks[code]?.count ?? 0) + 1, lastAt: new Date().toISOString() };
 
-    // 重算 questLine cleared 狀態
+    // 重算 questLine cleared 狀態，偵測首次過關
     if (data.questLine) {
       const completed = buildCompletedSet(data.tasks);
+      let newlyCleared = false;
       for (const ch of data.questLine.chapters) {
         for (const stage of ch.stages) {
-          (stage as Stage & { cleared?: boolean }).cleared =
-            stage.taskCodes.every((tc) => completed.has(tc));
+          const wasClear = !!(stage as Stage & { cleared?: boolean }).cleared;
+          const nowClear = stage.taskCodes.every((tc) => completed.has(tc));
+          (stage as Stage & { cleared?: boolean }).cleared = nowClear;
+          if (!wasClear && nowClear) newlyCleared = true;
         }
       }
       setQuestLine({ ...data.questLine });
+      if (newlyCleared) setJustCleared(true);
     }
 
     saveQuest(data);
@@ -447,6 +498,7 @@ export default function IslandPage() {
             const done = doneCodes.includes(t.code);
             const isPopping = poppingTask === t.code;
             const showFly = flyingPts[t.code];
+            const isRadarCheck = t.code === 'radar_check';
             return (
               <div key={t.code} className={`task-item${isPopping ? ' task-item-popping' : ''}`} style={{ position: 'relative' }}>
                 <button
@@ -463,7 +515,13 @@ export default function IslandPage() {
                 </button>
                 <div className="task-info">
                   <p className={`task-name${done ? ' task-name-done' : ''}`}>{t.name}</p>
-                  <p className="task-meta">{t.type === 'ext' ? '外連 internx.me' : t.type === 'self' ? '自報' : '自動'}</p>
+                  {isRadarCheck && !done ? (
+                    <a href="/war-room" className="task-meta" style={{ color: 'var(--brand-dark)', textDecoration: 'underline' }}
+                      onClick={() => handleCompleteDaily(t.code)}
+                    >前往戰情室</a>
+                  ) : (
+                    <p className="task-meta">{t.type === 'ext' ? '外連 internx.me' : t.type === 'self' ? '自報' : '自動'}</p>
+                  )}
                 </div>
                 <span className="task-pts"><CoinIcon size={13} />+10</span>
                 {showFly && <span className="pts-fly">+10</span>}
@@ -670,6 +728,9 @@ export default function IslandPage() {
           onComplete={handleSelfComplete}
         />
       )}
+
+      {/* 加入主畫面引導 */}
+      <AddToHome allDailyDone={allDone} justCleared={justCleared} />
     </div>
   );
 }

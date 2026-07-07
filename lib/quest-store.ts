@@ -50,14 +50,16 @@ function defaultQuest(): QuestData {
  * 生成並存回 questLine（由 island 頁或整合階段呼叫）
  * profileV1: 從 localStorage 'profile.v1' 讀到的物件
  * generatedAt: 由呼叫端傳入（預設 now，可覆寫以便測試）
+ * analysis: 選用，傳入可觸發特訓班章插入
  */
 export function regenerateQuestLine(
   profileV1: ProfileV1,
   generatedAt: string = new Date().toISOString(),
+  analysis?: { checklist: Record<string, boolean>; overall: number },
 ): QuestData {
   const data = loadQuest();
   const completed = buildCompletedSet(data.tasks);
-  data.questLine = generateQuestLine(profileV1, completed, generatedAt);
+  data.questLine = generateQuestLine(profileV1, completed, generatedAt, analysis);
   saveQuest(data);
   return data;
 }
@@ -138,12 +140,13 @@ const DAILY_TASK_POOL = {
     { code: 'daily_new_app', name: '新增 1 個職缺', type: 'auto' as const },
     { code: 'daily_update_status', name: '更新 1 個投遞狀態', type: 'auto' as const },
     { code: 'daily_interview_q', name: '記錄 1 個面試問題', type: 'auto' as const },
+    { code: 'radar_check', name: '看看今天有什麼新職缺', type: 'auto' as const },
   ],
 };
 
 export function getDailyPool(status: CareerStatus): { code: string; name: string; type: 'auto' | 'self' | 'ext' }[] {
   if (status === 'exploring' || status === 'narrowing') return DAILY_TASK_POOL.exploring;
-  if (status === 'targeting' || status === 'applying') return DAILY_TASK_POOL.applying;
+  if (status === 'targeting' || status === 'applying' || status === 'leveling') return DAILY_TASK_POOL.applying;
   return DAILY_TASK_POOL.preparing;
 }
 

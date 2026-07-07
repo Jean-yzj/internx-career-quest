@@ -5,7 +5,7 @@ import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
 import { ROLES } from '@/lib/roles';
-import { loadQuest, saveQuest, award } from '@/lib/quest-store';
+import { loadQuest, saveQuest, award, regenerateQuestLine } from '@/lib/quest-store';
 import type { ResumeAnalysisResult } from '@/lib/types';
 
 type Phase = 'input' | 'loading' | 'result' | 'unavailable';
@@ -185,6 +185,17 @@ export default function AnalysisPage() {
         award('resume_improve', 40, '依建議修改履歷後重新分析');
       }
       saveQuest(data);
+
+      // 分析完成後重新生成關卡線（插入特訓班章）
+      try {
+        const rawProfile = localStorage.getItem('profile.v1');
+        if (rawProfile) {
+          const profileV1 = JSON.parse(rawProfile);
+          const analysisSummary = { checklist: r.checklist ?? {}, overall: r.overall };
+          regenerateQuestLine(profileV1, new Date().toISOString(), analysisSummary);
+        }
+      } catch { /* ignore */ }
+
       setPhase('result');
     } catch {
       setErrorMsg('網路錯誤，請確認連線後再試。');

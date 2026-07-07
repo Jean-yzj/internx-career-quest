@@ -183,11 +183,13 @@ const SPRINT_CHAPTERS: Chapter[] = [
  * @param profile - profile.v1 物件
  * @param completedTaskCodes - 已達成的任務 code set（從 quest.v1 tasks 計算而來）
  * @param generatedAt - ISO 時間字串（由呼叫端傳入以保持純函式）
+ * @param analysis - 選用：履歷分析摘要，用於插入「藍藍的特訓班」章
  */
 export function generateQuestLine(
   profile: ProfileV1,
   completedTaskCodes: ReadonlySet<string> = new Set(),
   generatedAt: string = new Date().toISOString(),
+  analysis?: { checklist: Record<string, boolean>; overall: number },
 ): QuestLine {
   const { grade, hasResume, hasApplied, goalRoleId } = profile;
 
@@ -246,6 +248,36 @@ export function generateQuestLine(
 
   // 3c. hasApplied=true → sprint 從投遞章中段開始（1-1、1-2 標為 cleared）
   // 用已完成任務判定即可，不需額外處理——已完成的關卡在下方 cleared 計算中自動亮
+
+  // 3d. analysis 存在且非 explorer 軌 → 插入「藍藍的特訓班」章
+  if (analysis && trackId !== 'explorer') {
+    const trainingStages: Stage[] = [];
+    if (analysis.checklist['portfolio'] === false) {
+      trainingStages.push({ code: 'T-1', title: '特訓：作品集起步', taskCodes: ['portfolio_added'] });
+    }
+    if (analysis.checklist['quantified'] === false) {
+      trainingStages.push({ code: 'T-2', title: '特訓：讓成果有數字', taskCodes: ['quantified_added'] });
+    }
+    if (analysis.overall < 70) {
+      trainingStages.push({ code: 'T-3', title: '特訓：照建議改一版', taskCodes: ['resume_improve'] });
+    }
+    if (trainingStages.length > 0) {
+      // 找含 resume_analyzed 或 resume_improve 任務的那一章
+      const anchorChIdx = chapters.findIndex((ch) =>
+        ch.stages.some((s) =>
+          s.taskCodes.includes('resume_analyzed') || s.taskCodes.includes('resume_improve')
+        )
+      );
+      if (anchorChIdx !== -1) {
+        const trainingChapter: Chapter = {
+          id: -1, // 特訓章用 -1 作為識別 id
+          title: '藍藍的特訓班',
+          stages: trainingStages,
+        };
+        chapters.splice(anchorChIdx + 1, 0, trainingChapter);
+      }
+    }
+  }
 
   // 4. 計算每關是否 cleared（taskCodes 全部在 completedTaskCodes）
   for (const ch of chapters) {

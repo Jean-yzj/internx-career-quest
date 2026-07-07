@@ -1,0 +1,21 @@
+{
+  "name": "職涯闖關島",
+  "short_name": "職涯闖關島",
+  "description": "測驗興趣方向、分析履歷缺口、追蹤投遞進度——一站完成求職準備。",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0182FD",
+  "background_color": "#EAF4FF",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
