@@ -111,7 +111,7 @@ interface ChapterWithState extends Omit<Chapter, 'stages'> {
 // 關卡展開卡片
 // ──────────────────────────────────────────────
 // 關卡任務的一鍵前往（僅站內 auto/ext 任務；目的地 100% 是本站路由）
-const STAGE_TASK_ROUTE: Record<string, { href: string; label: string }> = {
+const STAGE_TASK_ROUTE: Record<string, { href: string; label: string; external?: boolean }> = {
   ability_quiz: { href: '/quiz/ability', label: '去做能力測驗' },
   interest_quiz: { href: '/quiz/interest', label: '去做興趣測驗' },
   resume_analyzed: { href: '/analysis', label: '去分析履歷' },
@@ -127,6 +127,10 @@ const STAGE_TASK_ROUTE: Record<string, { href: string; label: string }> = {
   radar_check: { href: '/war-room', label: '去看新職缺' },
   join_guild: { href: '/guilds', label: '去公會大廳' },
   guild_intro: { href: '/guilds', label: '去公會發文' },
+  help_newbie: { href: '/guilds', label: '去公會幫新手' },
+  coffee_chat: { href: 'https://internx.me/zh-tw/coffee-chat', label: '去實習通約 Coffee Chat', external: true },
+  // 註：心得(rating)/活動(activity)在 internx.me 是動態路由（需 companyId/activityId），
+  // 無安全的列表入口可連，故 read_review_3roles / read_target_3 / activity_join 暫不加外連 CTA。
 };
 
 function StageCard({
@@ -238,17 +242,31 @@ function StageCard({
                       </button>
                     </>
                   )}
-                  {/* auto/ext 任務：一鍵前往對應功能頁 */}
+                  {/* auto/ext 任務：一鍵前往對應功能頁（站內用 Link、外連用新分頁） */}
                   {!isSelf && !done && STAGE_TASK_ROUTE[t.code] && (
-                    <Link
-                      href={STAGE_TASK_ROUTE[t.code].href}
-                      className={styles.stageTaskCta}
-                    >
-                      {STAGE_TASK_ROUTE[t.code].label}
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                        <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </Link>
+                    STAGE_TASK_ROUTE[t.code].external ? (
+                      <a
+                        href={STAGE_TASK_ROUTE[t.code].href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.stageTaskCta}
+                      >
+                        {STAGE_TASK_ROUTE[t.code].label}
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path d="M4.5 2.5h5v5M9.5 2.5l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </a>
+                    ) : (
+                      <Link
+                        href={STAGE_TASK_ROUTE[t.code].href}
+                        className={styles.stageTaskCta}
+                      >
+                        {STAGE_TASK_ROUTE[t.code].label}
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </Link>
+                    )
                   )}
                 </div>
                 <span className={styles.stageTaskPts}><CoinIcon size={12} />+{t.points}</span>
