@@ -385,6 +385,22 @@ export default function IslandPage() {
       saveQuest(data);
       setQuestLine(ql);
     } else {
+      // 任務可能在站外完成（測驗頁/分析頁/戰情室只寫 tasks，不會回寫 questLine），
+      // 每次進島都用最新任務紀錄重算 cleared，否則過關不會亮星、藍藍不前進
+      const completed = buildCompletedSet(data.tasks);
+      let newlyCleared = false;
+      for (const ch of data.questLine.chapters) {
+        for (const stage of ch.stages) {
+          const wasClear = !!(stage as Stage & { cleared?: boolean }).cleared;
+          const nowClear = stage.taskCodes.every((tc) => completed.has(tc));
+          (stage as Stage & { cleared?: boolean }).cleared = nowClear;
+          if (!wasClear && nowClear) newlyCleared = true;
+        }
+      }
+      if (newlyCleared) {
+        saveQuest(data);
+        setJustCleared(true);
+      }
       setQuestLine(data.questLine);
     }
   }, []);
