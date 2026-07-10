@@ -237,6 +237,22 @@ export async function getJobs(roleId: string, limit = 20): Promise<JobRow[]> {
   }
 }
 
+// 各 roleId 的 active 實習數（職位圖鑑列表與探索報告用，一次查完）
+export async function getJobCounts(): Promise<Record<string, number>> {
+  if (!isDbAvailable()) return {};
+  const client = await getPool().connect();
+  try {
+    const res = await client.query<{ role_id: string; n: number }>(
+      `SELECT role_id, COUNT(*)::int AS n FROM jobs WHERE active = true GROUP BY role_id`
+    );
+    const out: Record<string, number> = {};
+    for (const row of res.rows) out[row.role_id] = Number(row.n);
+    return out;
+  } finally {
+    client.release();
+  }
+}
+
 // ===== 12h 定時排程（server-side singleton）=====
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
