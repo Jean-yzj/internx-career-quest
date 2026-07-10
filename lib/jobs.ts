@@ -1,24 +1,60 @@
 /**
- * lib/jobs.ts — 職缺雷達核心邏輯
- * 來源：Yourator API v4（公開列表，低頻輪詢，12h 排程）
- * 策展日期：2026-07-07
+ * lib/jobs.ts — 實習雷達核心邏輯
+ * 來源：internship-radar JSON（Jean-yzj/internx.internship-radar，每日三次 GH Actions 更新）
+ * 端點：raw.githubusercontent.com，一次請求取全部 230 筆三平台實習
+ * 策源日期：2026-07-11
  */
 
 import { getPool, isDbAvailable } from './db';
 
-// ===== 職位關鍵字對映（10 職位）=====
-export const ROLE_QUERY_MAP: Record<string, string[]> = {
-  product_manager:   ['PM', '實習'],
-  business_analyst:  ['商業分析', 'Business Analyst'],
-  marketing:         ['行銷企劃', '實習'],
-  hr:                ['人資', 'HR', '實習'],
-  business_dev:      ['業務', 'BD', '實習'],
-  consultant:        ['顧問', '實習'],
-  software_eng:      ['軟體工程師', '實習', 'SWE'],
-  data_analyst:      ['數據分析', '實習'],
-  ux_researcher:     ['UX', '使用者研究', '實習'],
-  finance:           ['金融', '實習'],
+// ===== radar category → roleId 對映（涵蓋 radar 全部 21 種 category）=====
+const CATEGORY_TO_ROLE: Record<string, string> = {
+  tech:           'software_eng',
+  engineering:    'software_eng',
+  healthcare:     'software_eng',     // 醫療資訊實習多為工程類
+  biotech:        'software_eng',
+  data:           'data_analyst',
+  research:       'data_analyst',
+  pm:             'product_manager',
+  design:         'ux_researcher',
+  marketing:      'marketing',
+  content:        'marketing',
+  hr:             'hr',
+  education:      'hr',
+  bd_sales:       'business_dev',
+  hospitality:    'business_dev',
+  finance:        'finance',
+  accounting:     'finance',
+  operations:     'business_analyst',
+  manufacturing:  'business_analyst',
+  supply_chain:   'business_analyst',
+  other:          'business_analyst', // 通用桶
+  consultant:     'consultant',
+  consulting:     'consultant',
+  legal:          'consultant',       // 法務實習歸顧問
 };
+
+// radar JSON 頂層結構
+interface RadarJob {
+  platform: string;   // '104' | 'cakeresume' | 'Yourator'
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  salary_min: number | null;
+  salary_type: string;
+  posted_at: string;
+  url: string;
+  category: string;
+  first_seen: string;
+  last_seen: string;
+  deadline: string;
+}
+
+interface RadarData {
+  generated_at: string;
+  jobs: RadarJob[];
+}
 
 export interface JobRow {
   id: string;
@@ -29,6 +65,7 @@ export interface JobRow {
   url: string;
   location: string | null;
   salary_text: string | null;
+  deadline: string | null;
   posted_at: string | null;
   fetched_at: string;
   active: boolean;
@@ -43,12 +80,13 @@ export async function initJobsTable(): Promise<void> {
       CREATE TABLE IF NOT EXISTS jobs (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         role_id text NOT NULL,
-        source text NOT NULL DEFAULT 'yourator',
+        source text NOT NULL DEFAULT 'radar',
         title text NOT NULL,
         company text NOT NULL,
         url text UNIQUE NOT NULL,
         location text,
         salary_text text,
+        deadline text,
         posted_at timestamptz,
         fetched_at timestamptz NOT NULL DEFAULT now(),
         active boolean NOT NULL DEFAULT true
@@ -57,111 +95,110 @@ export async function initJobsTable(): Promise<void> {
     await client.query(`
       CREATE INDEX IF NOT EXISTS jobs_role_active_idx ON jobs (role_id, active, fetched_at DESC)
     `);
+    // 補 deadline 欄（舊表可能沒有，冪等加）
+    await client.query(`
+      ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deadline text
+    `);
   } finally {
     client.release();
   }
 }
 
-// ===== Yourator 抓取函式 =====
-async function fetchYouratorJobs(terms: string[]): Promise<{
-  title: string; company: string; url: string; location: string | null; salary_text: string | null;
-}[]> {
-  const params = new URLSearchParams();
-  for (const t of terms) params.append('term[]', t);
+// ===== 抓取實習雷達 JSON =====
+const RADAR_URL =
+  'https://raw.githubusercontent.com/Jean-yzj/internx.internship-radar/main/data/internships.json';
 
+async function fetchRadarJobs(): Promise<RadarJob[]> {
   const ua = 'InternXCareerQuest/1.0 (+https://internx.me)';
-  const resp = await fetch(`https://www.yourator.co/api/v4/jobs?${params.toString()}`, {
+  const resp = await fetch(RADAR_URL, {
     headers: { 'User-Agent': ua, 'Accept': 'application/json' },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(20000),
   });
 
-  if (!resp.ok) throw new Error(`Yourator API ${resp.status}`);
-  const data = await resp.json() as {
-    payload: {
-      jobs: {
-        id: number; name: string; path: string;
-        salary: string; location: string;
-        company: { brand: string };
-      }[];
-    };
-  };
-
-  return (data.payload?.jobs ?? []).map((j) => ({
-    title: j.name,
-    company: j.company?.brand ?? '',
-    url: `https://www.yourator.co${j.path}`,
-    location: j.location ?? null,
-    salary_text: j.salary ?? null,
-  }));
+  if (!resp.ok) throw new Error(`radar fetch ${resp.status}`);
+  const data = await resp.json() as RadarData;
+  return data.jobs ?? [];
 }
 
-// ===== 單一角色抓取並 upsert =====
-async function refreshRoleJobs(roleId: string): Promise<number> {
-  if (!isDbAvailable()) return 0;
-  const terms = ROLE_QUERY_MAP[roleId];
-  if (!terms) return 0;
+// 正規化平台名稱 → source 欄位
+function normSource(platform: string): string {
+  const p = platform.toLowerCase();
+  if (p === '104') return '104';
+  if (p === 'cakeresume') return 'cakeresume';
+  if (p === 'yourator') return 'yourator';
+  return p;
+}
 
-  const jobs = await fetchYouratorJobs(terms);
-  if (jobs.length === 0) return 0;
+// ===== 全量 upsert（一次 fetch，按 category 分 roleId）=====
+export async function refreshAllJobs(): Promise<Record<string, number>> {
+  if (!isDbAvailable()) return {};
+
+  const radarJobs = await fetchRadarJobs();
+  if (radarJobs.length === 0) return {};
+
+  const results: Record<string, number> = {};
+  const seenUrls = new Set<string>();
 
   const client = await getPool().connect();
-  let upserted = 0;
   try {
-    for (const j of jobs) {
+    for (const j of radarJobs) {
       if (!j.url || !j.title || !j.company) continue;
+      if (seenUrls.has(j.url)) continue;
+      seenUrls.add(j.url);
+
+      const roleId = CATEGORY_TO_ROLE[j.category] ?? 'business_analyst';
+      const source = normSource(j.platform);
+      const postedAt = j.posted_at || null;
+
       const res = await client.query(
-        `INSERT INTO jobs (role_id, source, title, company, url, location, salary_text, fetched_at, active)
-         VALUES ($1, 'yourator', $2, $3, $4, $5, $6, now(), true)
+        `INSERT INTO jobs (role_id, source, title, company, url, location, salary_text, deadline, posted_at, fetched_at, active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), true)
          ON CONFLICT (url) DO UPDATE SET
-           title = EXCLUDED.title,
-           company = EXCLUDED.company,
-           location = EXCLUDED.location,
-           salary_text = EXCLUDED.salary_text,
+           role_id    = EXCLUDED.role_id,
+           title      = EXCLUDED.title,
+           company    = EXCLUDED.company,
+           location   = EXCLUDED.location,
+           salary_text= EXCLUDED.salary_text,
+           deadline   = EXCLUDED.deadline,
            fetched_at = now(),
-           active = true
+           active     = true
          RETURNING id`,
-        [roleId, j.title, j.company, j.url, j.location, j.salary_text]
+        [
+          roleId,
+          source,
+          j.title,
+          j.company,
+          j.url,
+          j.location || null,
+          j.salary || null,
+          j.deadline || null,
+          postedAt,
+        ]
       );
-      if (res.rows.length > 0) upserted++;
+      if (res.rows.length > 0) {
+        results[roleId] = (results[roleId] ?? 0) + 1;
+      }
     }
 
-    // 7 天沒再出現 → inactive
+    // 7 天沒再出現（fetched_at 未更新）→ inactive
     await client.query(
       `UPDATE jobs SET active = false
-       WHERE role_id = $1 AND fetched_at < now() - interval '7 days'`,
-      [roleId]
+       WHERE fetched_at < now() - interval '7 days'`
     );
   } finally {
     client.release();
   }
-  return upserted;
-}
-
-// ===== 全職位批次抓取（每輪間隔 2s）=====
-export async function refreshAllJobs(): Promise<Record<string, number>> {
-  const results: Record<string, number> = {};
-  const roles = Object.keys(ROLE_QUERY_MAP);
-
-  for (const roleId of roles) {
-    try {
-      await new Promise((r) => setTimeout(r, 2000)); // 禮貌間隔
-      results[roleId] = await refreshRoleJobs(roleId);
-    } catch (err) {
-      console.error(`[jobs] refresh ${roleId} failed:`, err instanceof Error ? err.message : err);
-      results[roleId] = -1;
-    }
-  }
   return results;
 }
 
-// 標題相關性（display 排序用；查詢詞含通用「實習」會撈進鄰近職缺，靠這裡把對題的排前面）
+// 標題相關性（display 排序用）
 const ROLE_TITLE_PATTERNS: Record<string, RegExp> = {
   product_manager: /\bpm\b|product\s*(manager|owner)|產品經理|產品企劃/i,
   business_analyst: /\bba\b|business\s*analyst|商業分析/i,
   marketing: /行銷|marketing|社群|品牌/i,
   hr: /人資|\bhr\b|人力資源|招募|recruit/i,
   business_dev: /\bbd\b|業務|business\s*develop|sales/i,
-  consultant: /顧問|consult/i,
+  consultant: /顧問|consult|法務|legal/i,
   software_eng: /工程師|engineer|developer|軟體|前端|後端|full\s*stack/i,
   data_analyst: /數據|資料分析|data\s*(analyst|scien)/i,
   ux_researcher: /\bux\b|使用者研究|user\s*research|產品設計/i,
@@ -183,7 +220,7 @@ export async function getJobs(roleId: string, limit = 20): Promise<JobRow[]> {
   try {
     const res = await client.query<JobRow>(
       `SELECT id, role_id, source, title, company, url, location, salary_text,
-              posted_at, fetched_at, active
+              deadline, posted_at, fetched_at, active
        FROM jobs
        WHERE role_id = $1 AND active = true
        ORDER BY fetched_at DESC, posted_at DESC NULLS LAST
@@ -213,8 +250,8 @@ export function startJobsScheduler(): void {
     try {
       await initJobsTable();
       const results = await refreshAllJobs();
-      const total = Object.values(results).filter((n) => n > 0).reduce((s, n) => s + n, 0);
-      console.log(`[jobs] scheduler run done, upserted ${total} rows`);
+      const total = Object.values(results).reduce((s, n) => s + n, 0);
+      console.log(`[jobs] scheduler run done, upserted ${total} rows across ${Object.keys(results).length} roles`);
     } catch (err) {
       console.error('[jobs] scheduler error:', err instanceof Error ? err.message : err);
     }

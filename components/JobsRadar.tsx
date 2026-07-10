@@ -19,6 +19,7 @@ interface JobItem {
   url: string;
   location: string | null;
   salary_text: string | null;
+  deadline: string | null;
   fetched_at: string;
 }
 
@@ -93,13 +94,13 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
             <circle cx="9" cy="9" r="4" stroke="var(--brand)" strokeWidth="1.5" opacity=".5" />
             <circle cx="9" cy="9" r="1.5" fill="var(--brand)" />
           </svg>
-          <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--ink)' }}>相關職缺</span>
-          {roleLabel && <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>· {roleLabel}</span>}
+          <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--ink)' }}>實習雷達</span>
+          {roleLabel && <span style={{ fontSize: '0.75rem', color: 'var(--ink-2)' }}>· {roleLabel}實習</span>}
         </div>
         {loading && <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>掃描中...</p>}
         {!loading && error && <p style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>{error}</p>}
         {!loading && !error && jobs.length === 0 && selectedRole && (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>尚無快取職缺，12 小時更新一次。</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--ink-2)' }}>尚無快取實習缺，12 小時更新一次。</p>
         )}
         {!loading && jobs.length > 0 && (
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -140,7 +141,7 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
   }
 
   return (
-    <section className="card" style={{ marginBottom: 20 }} aria-label="職缺雷達">
+    <section className="card" style={{ marginBottom: 20 }} aria-label="實習雷達">
       {/* 標頭 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -151,10 +152,10 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
             <path d="M9 2V1M9 17v-1M2 9H1M17 9h-1" stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)' }}>
-            職缺雷達
+            實習雷達
             {roleLabel && (
               <span style={{ fontWeight: 500, color: 'var(--ink-2)', marginLeft: 6 }}>
-                ——現在正在開的{roleLabel}職缺
+                ——現在正在開的{roleLabel}實習
               </span>
             )}
           </span>
@@ -197,7 +198,7 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
       {/* 無職位選擇時的引導 */}
       {!selectedRole && (
         <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', lineHeight: 1.6 }}>
-          選擇目標職位後，雷達會自動掃描 Yourator 上的最新職缺，讓你一鍵收進戰情室。
+          選擇目標職位後，雷達會掃描 104、CakeResume、Yourator 上的最新實習缺，讓你一鍵收進戰情室。
         </p>
       )}
 
@@ -216,7 +217,7 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
       {/* 無資料引導 */}
       {selectedRole && !loading && !error && jobs.length === 0 && (
         <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', lineHeight: 1.6 }}>
-          雷達掃描中，先貼職缺網址手動收；最新資料每 12 小時更新一次。
+          雷達掃描中，先貼職缺網址手動收；實習資料每 12 小時更新一次。
         </p>
       )}
 
@@ -243,14 +244,19 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
                   {job.location && <span style={{ marginLeft: 6 }}>· {job.location}</span>}
                   {job.salary_text && <span style={{ marginLeft: 6, color: 'var(--ok)' }}>· {job.salary_text}</span>}
                 </div>
-                <div style={{ marginTop: 4 }}>
+                <div style={{ marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{
                     fontSize: '0.6875rem',
                     background: 'var(--sky-soft)', color: 'var(--brand-ink)',
                     borderRadius: 6, padding: '1px 6px', fontWeight: 600,
                   }}>
-                    {job.source === 'yourator' ? 'Yourator' : job.source}
+                    {job.source === '104' ? '104' : job.source === 'cakeresume' ? 'CakeResume' : 'Yourator'}
                   </span>
+                  {job.deadline && (
+                    <span style={{ fontSize: '0.6875rem', color: 'var(--ink-2)' }}>
+                      截止 {job.deadline}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -301,7 +307,7 @@ export default function JobsRadar({ onAddJob, compact }: JobsRadarProps) {
 
       {/* 免責聲明 */}
       <p style={{ fontSize: '0.6875rem', color: 'var(--ink-2)', marginTop: 10, lineHeight: 1.5 }}>
-        資料來自公開頁面（Yourator），正確性以原站為準。每 12 小時更新一次。
+        資料來自公開頁面（104、CakeResume、Yourator），正確性以原站為準。每 12 小時更新一次。
       </p>
     </section>
   );
