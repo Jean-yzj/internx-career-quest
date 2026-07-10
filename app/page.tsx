@@ -5,7 +5,7 @@ import Mascot from '@/components/Mascot';
 
 export const metadata: Metadata = {
   title: '職涯闖關島 | 知道下一步，每天前進一點',
-  alternates: { canonical: 'https://internx-career-quest.zeabur.app' },
+  alternates: { canonical: 'https://quest.lazybearlife.com' },
 };
 
 export default function LandingPage() {

@@ -14,15 +14,15 @@ const notoSansTC = Noto_Sans_TC({
 export const metadata: Metadata = {
   title: '職涯闖關島 | 知道下一步，每天前進一點',
   description: '測驗興趣方向、分析履歷缺口、追蹤投遞進度——一站完成求職準備。',
-  metadataBase: new URL('https://internx-career-quest.zeabur.app'),
+  metadataBase: new URL('https://quest.lazybearlife.com'),
   alternates: {
-    canonical: 'https://internx-career-quest.zeabur.app',
+    canonical: 'https://quest.lazybearlife.com',
   },
   openGraph: {
     type: 'website',
     title: '職涯闖關島',
     description: '測驗興趣方向、分析履歷缺口、追蹤投遞進度——一站完成求職準備。',
-    url: 'https://internx-career-quest.zeabur.app',
+    url: 'https://quest.lazybearlife.com',
     siteName: '職涯闖關島',
     images: [
       {
