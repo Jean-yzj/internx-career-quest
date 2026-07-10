@@ -13,6 +13,8 @@ import type { QuestData } from '@/lib/types';
 import { getTodayStr } from '@/lib/types';
 import { generateQuestLine, buildCompletedSet, getCurrentStage } from '@/lib/quest-line';
 import type { QuestLine, Chapter, Stage, ProfileV1 } from '@/lib/quest-line';
+import { getNextStep } from '@/lib/next-step';
+import type { NextStep } from '@/lib/next-step';
 import { GUILD_DEFS } from '@/lib/guilds';
 import { getStageResources } from '@/lib/resources';
 import StageResources from '@/components/StageResources';
@@ -617,6 +619,32 @@ export default function IslandPage() {
             </a>
           </div>
         )}
+
+        {/* 下一步卡（已註冊才顯示） */}
+        {hasProfile && questData && (() => {
+          const step: NextStep = getNextStep(questData, goalRoleId);
+          const toneCard = step.tone === 'urgent' ? styles.nextStepCardUrgent
+            : step.tone === 'done' ? styles.nextStepCardDone
+            : styles.nextStepCardNormal;
+          const toneBtn = step.tone === 'urgent' ? styles.nextStepBtnUrgent
+            : step.tone === 'done' ? styles.nextStepBtnDone
+            : styles.nextStepBtnNormal;
+          const mascotVariant: 'cheer' | 'happy' = step.tone === 'urgent' ? 'cheer' : 'happy';
+          return (
+            <div className={`${styles.nextStepCard} ${toneCard}`}>
+              <div className={styles.nextStepMascot}>
+                <Mascot size={52} variant={mascotVariant} />
+              </div>
+              <div className={styles.nextStepBody}>
+                <p className={styles.nextStepTitle}>{step.title}</p>
+                <p className={styles.nextStepSubtitle}>{step.subtitle}</p>
+                <Link href={step.ctaHref} className={`${styles.nextStepBtn} ${toneBtn}`}>
+                  {step.ctaLabel}
+                </Link>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 關卡地圖 */}
         {hasProfile && questLine && (

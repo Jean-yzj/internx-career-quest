@@ -1,0 +1,483 @@
+/* report.module.css — 探索報告頁專用樣式 */
+
+/* ===== 頁面標題區 ===== */
+.pageHeader {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.pageTitle {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.pageSubtitle {
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+}
+
+/* ===== 無資料引導卡 ===== */
+.emptyCard {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 48px 32px;
+  text-align: center;
+  max-width: 480px;
+  margin: 60px auto 0;
+}
+
+.emptyIcon {
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+
+.emptyDesc {
+  font-size: 0.9375rem;
+  color: var(--ink-2);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+/* ===== 性格區塊 ===== */
+.personalitySection {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 24px 20px;
+  margin-bottom: 20px;
+}
+
+.personalityHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.personalityBadge {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-soft));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.04em;
+}
+
+.personalityInfo {
+  flex: 1;
+}
+
+.personalityName {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.personalityDesc {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+
+/* ===== 六型長條 ===== */
+.scoresTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.scoreLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  width: 42px;
+  flex-shrink: 0;
+}
+
+.scoreTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--line);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.scoreFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--brand-soft), var(--brand));
+  transition: width 0.5s ease;
+}
+
+.scoreNum {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ===== 方向卡列表 ===== */
+.cardsSection {
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+/* 三色主題 */
+.dirCard {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 22px 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dirCard::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.12;
+}
+
+.cardSky {
+  background: var(--sky-soft);
+  border: 2px solid var(--sky);
+}
+.cardSky::before { background: var(--sky); }
+
+.cardMint {
+  background: var(--mint-soft);
+  border: 2px solid var(--mint);
+}
+.cardMint::before { background: var(--mint); }
+
+.cardGrape {
+  background: var(--grape-soft);
+  border: 2px solid var(--grape);
+}
+.cardGrape::before { background: var(--grape); }
+
+/* 卡片序號 */
+.cardIndex {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.cardSky .cardIndex { color: var(--sky-deep); }
+.cardMint .cardIndex { color: var(--mint-deep); }
+.cardGrape .cardIndex { color: var(--grape-deep); }
+
+.cardTitle {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+/* 為什麼適合你 */
+.whyBlock {
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.whyLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.whyText {
+  font-size: 0.875rem;
+  color: var(--ink);
+  line-height: 1.65;
+}
+
+/* 實習數量 */
+.internCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 99px;
+  margin-bottom: 14px;
+  cursor: default;
+}
+
+.internCountLink {
+  text-decoration: none;
+  transition: opacity 0.12s;
+}
+
+.internCountLink:hover {
+  opacity: 0.8;
+}
+
+.cardSky .internCount { background: var(--sky); color: #fff; }
+.cardMint .internCount { background: var(--mint); color: #fff; }
+.cardGrape .internCount { background: var(--grape); color: #fff; }
+
+.internCountScan {
+  background: rgba(255,255,255,0.6);
+  color: var(--ink-2);
+  border: 1.5px solid var(--line);
+}
+
+/* 公會區 */
+.guildBlock {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guildBadgeWrap {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.guildInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.guildName {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.guildTagline {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guildLink {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cardSky .guildLink { color: var(--sky-deep); }
+.cardMint .guildLink { color: var(--mint-deep); }
+.cardGrape .guildLink { color: var(--grape-deep); }
+
+/* CTA 區 */
+.cardActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+
+/* 設為目標按鈕：依顏色主題 */
+.btnTargetSky {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #6DBDFF, var(--sky-deep));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: 0 4px 0 #1A5FA8;
+  cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+  text-decoration: none;
+  flex: 1;
+  justify-content: center;
+}
+.btnTargetSky:active { transform: translateY(3px); box-shadow: 0 1px 0 #1A5FA8; }
+
+.btnTargetMint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #4FD99A, var(--mint-deep));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: 0 4px 0 #14825A;
+  cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+  text-decoration: none;
+  flex: 1;
+  justify-content: center;
+}
+.btnTargetMint:active { transform: translateY(3px); box-shadow: 0 1px 0 #14825A; }
+
+.btnTargetGrape {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #B8ABFF, var(--grape-deep));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: 0 4px 0 #5840C8;
+  cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+  text-decoration: none;
+  flex: 1;
+  justify-content: center;
+}
+.btnTargetGrape:active { transform: translateY(3px); box-shadow: 0 1px 0 #5840C8; }
+
+.btnAbility {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  box-shadow: 0 3px 0 var(--line-strong);
+  cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btnAbility:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line-strong); }
+
+/* ===== 底部 CTA ===== */
+.bottomCta {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.bottomCtaText {
+  flex: 1;
+  min-width: 160px;
+}
+
+.bottomCtaTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.bottomCtaDesc {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+/* ===== Mobile tweaks ===== */
+@media (max-width: 480px) {
+  .personalityHeader {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .personalityBadge {
+    width: 48px;
+    height: 48px;
+    font-size: 1.125rem;
+  }
+
+  .cardActions {
+    flex-direction: column;
+  }
+
+  .btnAbility {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bottomCta {
+    flex-direction: column;
+    text-align: center;
+  }
+}

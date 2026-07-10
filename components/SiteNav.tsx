@@ -67,6 +67,9 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
           <Link href="/quiz/interest" className={`nav-link${activePath?.startsWith('/quiz') ? ' nav-link-active' : ''}`}>
             <span className="nav-label">測驗</span>
           </Link>
+          <Link href="/roles" className={`nav-link${activePath?.startsWith('/roles') ? ' nav-link-active' : ''}`}>
+            <span className="nav-label">職位圖鑑</span>
+          </Link>
           <Link href="/guilds" className={`nav-link${activePath?.startsWith('/guilds') ? ' nav-link-active' : ''}`}>
             <span className="nav-label">公會</span>
           </Link>

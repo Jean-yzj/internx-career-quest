@@ -481,6 +481,99 @@
 }
 
 /* ──────────────────────────────────────────────
+   下一步卡
+────────────────────────────────────────────── */
+.nextStepCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.nextStepCardUrgent {
+  background: var(--coral-soft);
+  border-color: var(--coral);
+}
+
+.nextStepCardNormal {
+  background: var(--sky-soft);
+  border-color: var(--brand-soft);
+}
+
+.nextStepCardDone {
+  background: var(--mint-soft);
+  border-color: var(--mint-deep);
+}
+
+.nextStepMascot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nextStepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.nextStepTitle {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+
+.nextStepSubtitle {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.nextStepBtn {
+  display: inline-block;
+  padding: 9px 20px;
+  border-radius: 99px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.nextStepBtn:active {
+  transform: scale(0.96);
+  box-shadow: none;
+}
+
+.nextStepBtnUrgent {
+  background: var(--coral-deep);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(229, 86, 107, 0.3);
+}
+
+.nextStepBtnNormal {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(1, 130, 253, 0.25);
+}
+
+.nextStepBtnDone {
+  background: var(--mint-deep);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(31, 163, 104, 0.25);
+}
+
+/* ──────────────────────────────────────────────
    手機 390px：節點改單列垂直
 ────────────────────────────────────────────── */
 @media (max-width: 430px) {

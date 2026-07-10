@@ -197,7 +197,10 @@ export default function InterestQuizPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/island" className="btn-game" style={{ flex: 1 }}>前往闖關島</a>
+            <a href="/report" className="btn-game" style={{ flex: 1 }}>看你的專屬探索報告</a>
+            <a href="/island" className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center' }}>直接去闖關島</a>
+          </div>
+          <div style={{ marginTop: 10 }}>
             <button type="button" className="btn-ghost" onClick={() => { setPhase('quiz'); setAnswers(Array(18).fill(null)); setCurrent(0); }}>
               重新測驗
             </button>

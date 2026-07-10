@@ -1,0 +1,505 @@
+/* ===== 職位圖鑑 CSS Module ===== */
+
+/* ---- List page ---- */
+.listPage {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.listHero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.listTitle {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--brand-ink);
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.listSubtitle {
+  font-size: 1rem;
+  color: var(--ink-2);
+  max-width: 480px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}
+
+.listCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 99px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.listCta:hover {
+  background: var(--brand-deep);
+}
+
+.rolesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.roleCard {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.roleCard:hover {
+  border-color: var(--brand-soft);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.roleCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roleShortBadge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--sky-soft);
+  color: var(--brand-ink);
+  letter-spacing: 0.02em;
+}
+
+.roleName {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.roleTagline {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.roleJobCount {
+  margin-top: auto;
+  font-size: 0.8125rem;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* ---- Detail page ---- */
+.detailPage {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 80px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  text-decoration: none;
+  margin-bottom: 24px;
+  transition: color 0.12s;
+}
+
+.backLink:hover {
+  color: var(--brand);
+}
+
+.hero {
+  margin-bottom: 36px;
+}
+
+.heroTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--brand-ink);
+  letter-spacing: -0.025em;
+  margin-bottom: 8px;
+}
+
+.heroTagline {
+  font-size: 1.0625rem;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+
+.heroJobCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--mint-soft);
+  color: var(--mint-deep);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 99px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--brand-ink);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: var(--brand);
+  border-radius: 2px;
+}
+
+.whatItIs {
+  font-size: 0.9375rem;
+  color: var(--ink);
+  line-height: 1.7;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+}
+
+.itemList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.itemList li {
+  font-size: 0.9375rem;
+  color: var(--ink);
+  line-height: 1.6;
+  padding-left: 20px;
+  position: relative;
+}
+
+.itemList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+}
+
+.stepList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  counter-reset: step;
+}
+
+.stepList li {
+  font-size: 0.9375rem;
+  color: var(--ink);
+  line-height: 1.6;
+  padding-left: 32px;
+  position: relative;
+  counter-increment: step;
+}
+
+.stepList li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Skills bar chart */
+.skillsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skillRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skillLabel {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  font-weight: 500;
+  text-align: right;
+}
+
+.skillBarTrack {
+  flex: 1;
+  height: 10px;
+  background: var(--line);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.skillBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-soft), var(--brand));
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.skillPct {
+  width: 36px;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Good fit + salary */
+.fitCard {
+  background: var(--grape-soft);
+  border: 1.5px solid var(--grape-deep);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  font-size: 0.9375rem;
+  color: var(--grape-deep);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.salaryCard {
+  background: var(--sand-soft);
+  border: 1.5px solid var(--sand-deep);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.misconceptionCard {
+  background: var(--coral-soft);
+  border: 1.5px solid var(--coral-deep);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  font-size: 0.875rem;
+  color: var(--coral-deep);
+  line-height: 1.6;
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Guild card */
+.guildCard {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.guildCard:hover {
+  border-color: var(--brand-soft);
+  box-shadow: var(--shadow);
+}
+
+.guildName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.guildTagline {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+/* Jobs list */
+.jobsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jobCard {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: border-color 0.12s;
+}
+
+.jobCard:hover {
+  border-color: var(--brand-soft);
+}
+
+.jobInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.jobTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jobCompany {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.sourceBadge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--sky-soft);
+  color: var(--brand-ink);
+  flex-shrink: 0;
+}
+
+.externalIcon {
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+
+/* Bottom CTAs */
+.ctaRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ctaPrimary {
+  flex: 1;
+  min-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 99px;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.ctaPrimary:hover {
+  background: var(--brand-deep);
+}
+
+.ctaSecondary {
+  flex: 1;
+  min-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--card);
+  color: var(--brand-ink);
+  border: 2px solid var(--brand);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: 11px 20px;
+  border-radius: 99px;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.ctaSecondary:hover {
+  background: var(--sky-soft);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .listTitle {
+    font-size: 1.375rem;
+  }
+
+  .heroTitle {
+    font-size: 1.5rem;
+  }
+
+  .skillLabel {
+    width: 80px;
+    font-size: 0.75rem;
+  }
+
+  .rolesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .ctaRow {
+    flex-direction: column;
+  }
+}
