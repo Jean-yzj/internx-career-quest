@@ -93,6 +93,27 @@ function flattenPosts(posts: Post[]): Post[] {
   return all;
 }
 
+// Merge server-confirmed posts into the current list.
+// - drop optimistic entries that this batch confirms (match by device+content+reply),
+//   since the optimistic id (opt-xxx) never equals the real UUID
+// - de-dupe real posts by id (incoming wins) so repeated/racing polls never duplicate
+// - keep ascending created_at order
+function optimisticKey(p: Post): string {
+  return `${p.device_id}|${p.content}|${p.reply_to ?? ''}`;
+}
+function mergePosts(prev: Post[], incoming: Post[]): Post[] {
+  const confirmedKeys = new Set(incoming.map(optimisticKey));
+  const byId = new Map<string, Post>();
+  for (const p of prev) {
+    if (p._optimistic && confirmedKeys.has(optimisticKey(p))) continue; // replaced by the real post
+    byId.set(p.id, p);
+  }
+  for (const p of incoming) byId.set(p.id, p); // real post wins over any stale copy
+  return [...byId.values()].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+}
+
 export default function GuildDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -189,17 +210,12 @@ export default function GuildDetailPage() {
           }
           return p;
         });
-        setPosts((prev) => {
-          // remove any optimistic versions that match (by content + deviceId within 30s)
-          const confirmed = new Set(enriched.map((p: Post) => p.id));
-          const filtered = prev.filter((p) => {
-            if (!p._optimistic) return true;
-            // keep optimistic if no match yet
-            return !confirmed.has(p.id);
-          });
-          return [...filtered, ...enriched];
-        });
-        latestCreatedAt.current = newPosts[newPosts.length - 1].created_at;
+        setPosts((prev) => mergePosts(prev, enriched));
+        // advance cursor to the newest created_at we've seen (never move backwards)
+        latestCreatedAt.current = enriched.reduce(
+          (m, p) => (new Date(p.created_at).getTime() > new Date(m).getTime() ? p.created_at : m),
+          latestCreatedAt.current ?? enriched[0].created_at,
+        );
       }
     } catch { /* ignore */ }
   }, [guildId]);
