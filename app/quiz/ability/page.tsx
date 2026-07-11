@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
 import Mascot from '@/components/Mascot';
+import ShareCard from '@/components/ShareCard';
 import { ABILITY_QUESTIONS, computeDimensionScores, getAbilityLevel, getWeakestDimensions, DIMENSION_LABELS, ABILITY_LEVEL_LABELS } from '@/lib/ability-quiz';
 import { loadQuest, saveQuest, award } from '@/lib/quest-store';
 import { getRoleById, ROLES } from '@/lib/roles';
@@ -195,6 +196,13 @@ export default function AbilityQuizPage() {
               ))}
             </div>
           </div>
+
+          <ShareCard
+            title={`我的 ${role?.name} 準備程度是 ${levelInfo.label}`}
+            body={`能力測驗 ${score}/20，接下來要優先補強 ${weakest.map((dim) => DIMENSION_LABELS[dim]).join('、')}。`}
+            cta="一起測看看目前準備到哪裡"
+            url="https://quest.lazybearlife.com/quiz/ability"
+          />
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="/island" className="btn-game" style={{ flex: 1 }}>查看推薦任務</a>

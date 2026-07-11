@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
 import Mascot from '@/components/Mascot';
+import ShareCard from '@/components/ShareCard';
 import { RIASEC_QUESTIONS, computeHollandCode, getTopRoleIds, getTypeName } from '@/lib/interest-quiz';
 import { loadQuest, saveQuest, award } from '@/lib/quest-store';
 import { getRoleById } from '@/lib/roles';
@@ -189,6 +190,13 @@ export default function InterestQuizPage() {
             </div>
           </div>
 
+          <ShareCard
+            title={`我的職涯興趣結果是 ${typeInfo.name}`}
+            body={`RIASEC 組合是 ${result.hollandCode}，推薦探索 ${result.topRoleIds.map((roleId) => getRoleById(roleId)?.name).filter(Boolean).join('、')}。`}
+            cta="你也可以測看看自己的方向"
+            url="https://quest.lazybearlife.com/quick-start"
+          />
+
           {/* Points earned notice */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--sand-soft)', border: '1.5px solid var(--sand)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 20 }}>
             <CoinIcon size={16} />
@@ -197,10 +205,7 @@ export default function InterestQuizPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="/report" className="btn-game" style={{ flex: 1 }}>看你的專屬探索報告</a>
-            <a href="/island" className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center' }}>直接去闖關島</a>
-          </div>
-          <div style={{ marginTop: 10 }}>
+            <a href="/island" className="btn-game" style={{ flex: 1 }}>前往闖關島</a>
             <button type="button" className="btn-ghost" onClick={() => { setPhase('quiz'); setAnswers(Array(18).fill(null)); setCurrent(0); }}>
               重新測驗
             </button>

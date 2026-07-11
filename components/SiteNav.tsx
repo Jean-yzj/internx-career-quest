@@ -58,6 +58,9 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
           <Link href="/island" className={`nav-link${activePath === '/island' ? ' nav-link-active' : ''}`}>
             <span className="nav-label">闖關島</span>
           </Link>
+          <Link href="/roles" className={`nav-link${activePath?.startsWith('/roles') ? ' nav-link-active' : ''}`}>
+            <span className="nav-label">職位圖鑑</span>
+          </Link>
           <Link href="/war-room" className={`nav-link${activePath === '/war-room' ? ' nav-link-active' : ''}`}>
             <span className="nav-label">戰情室</span>
           </Link>
@@ -66,9 +69,6 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
           </Link>
           <Link href="/quiz/interest" className={`nav-link${activePath?.startsWith('/quiz') ? ' nav-link-active' : ''}`}>
             <span className="nav-label">測驗</span>
-          </Link>
-          <Link href="/roles" className={`nav-link${activePath?.startsWith('/roles') ? ' nav-link-active' : ''}`}>
-            <span className="nav-label">職位圖鑑</span>
           </Link>
           <Link href="/guilds" className={`nav-link${activePath?.startsWith('/guilds') ? ' nav-link-active' : ''}`}>
             <span className="nav-label">公會</span>

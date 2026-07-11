@@ -24,6 +24,7 @@ export default function LandingPage() {
             職涯闖關島
           </span>
           <nav className="site-nav" aria-label="主導覽">
+            <Link href="/roles" className="nav-link"><span className="nav-label">準備清單</span></Link>
             <Link href="/war-room" className="nav-link"><span className="nav-label">戰情室</span></Link>
             <Link href="/analysis" className="nav-link"><span className="nav-label">履歷分析</span></Link>
             <Link href="/quiz/interest" className="nav-link"><span className="nav-label">測驗</span></Link>
@@ -49,13 +50,60 @@ export default function LandingPage() {
               知道下一步，<br />每天前進一點
             </h1>
             <p style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', lineHeight: 1.6, marginBottom: 28 }}>
-              測驗興趣方向、分析履歷缺口、追蹤投遞進度——每天完成一個小任務，穩定累積求職實力。
+              不知道適合什麼、履歷很空、投了沒回音，都先變成今天能完成的一小步。
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/onboarding" className="btn-game">開始闖關</Link>
+              <Link href="/quick-start" className="btn-game">3 分鐘健檢</Link>
               <Link href="/island" className="btn-game-sec">繼續闖關</Link>
             </div>
           </div>
+        </section>
+
+        {/* Pain-first entry points */}
+        <section style={{ maxWidth: 860, margin: '0 auto 42px' }} aria-label="選擇目前遇到的問題">
+          <h2 style={{ fontSize: '0.875rem', fontWeight: 700, textAlign: 'center', color: 'var(--ink-2)', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            你現在卡在哪
+          </h2>
+          <div className="landing-path-grid">
+            <Link href="/quick-start" className="landing-path-card">
+              <span className="landing-path-icon landing-path-icon-sky">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  <circle cx="14" cy="14" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M17.5 10.5l-2.2 5.1-4.8 1.9 2.2-5.1 4.8-1.9z" fill="currentColor" opacity=".45"/>
+                </svg>
+              </span>
+              <strong>不知道適合什麼</strong>
+              <span>用 18 題測驗先找出 3 個方向。</span>
+            </Link>
+            <Link href="/analysis" className="landing-path-card">
+              <span className="landing-path-icon landing-path-icon-sand">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  <rect x="7" y="4" width="14" height="20" rx="3" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M10 11h8M10 15h6M10 19h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </span>
+              <strong>履歷看起來很空</strong>
+              <span>貼上文字，先找最值得補的缺口。</span>
+            </Link>
+            <Link href="/war-room" className="landing-path-card">
+              <span className="landing-path-icon landing-path-icon-mint">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  <rect x="5" y="7" width="18" height="15" rx="3" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M10 7V5h8v2M9 13h10M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </span>
+              <strong>投遞進度很亂</strong>
+              <span>把職缺整理成截止日與下一步。</span>
+            </Link>
+          </div>
+        </section>
+
+        <section className="landing-prep-band" aria-label="實習準備清單">
+          <div>
+            <h2>先看職位準備清單</h2>
+            <p>PM、行銷、軟體工程師、數據分析等 10 個方向，整理成履歷檢查、作品集證據與 7 天任務。</p>
+          </div>
+          <Link href="/roles" className="btn-ghost">查看清單</Link>
         </section>
 
         {/* Three steps */}

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import { ROLES, ROLE_IDS } from '@/lib/roles';
-import { getRoleGuide } from '@/lib/role-guide';
+import { getRoleGuide, ROLE_PROOF_IDEAS } from '@/lib/role-guide';
 import { GUILD_DEFS } from '@/lib/guilds';
 import RoleJobs from '@/components/RoleJobs';
 import styles from '../roles.module.css';
@@ -127,6 +127,18 @@ export default async function RoleDetailPage({
             ))}
           </ul>
         </section>
+
+        {/* 可以先做這些作品（原 /prep 併入） */}
+        {ROLE_PROOF_IDEAS[id] && ROLE_PROOF_IDEAS[id].length > 0 && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>可以先做這些作品</h2>
+            <ul className={styles.itemList}>
+              {ROLE_PROOF_IDEAS[id].map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* 適合的人 + 薪資 + 誤解 */}
         <section className={styles.section}>

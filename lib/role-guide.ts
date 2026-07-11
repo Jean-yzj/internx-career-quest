@@ -303,3 +303,17 @@ export const ROLE_GUIDES: RoleGuide[] = [
 export function getRoleGuide(roleId: string): RoleGuide | undefined {
   return ROLE_GUIDES.find((g) => g.roleId === roleId);
 }
+
+// 「可以先做這些作品」——具體到能寫進履歷的產出（原 /prep 的作品證據，合併進圖鑑）
+export const ROLE_PROOF_IDEAS: Record<string, string[]> = {
+  product_manager: ['拆解一個常用 App 的 onboarding，寫出 3 個改善假設', '畫一份簡短 PRD，包含目標、使用者故事與成功指標', '訪談 3 位同學，整理需求與優先順序'],
+  business_analyst: ['用公開資料做一份 5 頁商業分析簡報', '用 Excel 或 SQL 重現一個營收/留存切分表', '把分析結論改寫成 3 個可執行決策'],
+  marketing: ['整理一檔活動的受眾、訊息、渠道與成效指標', '做 3 篇不同角度的社群貼文並追蹤數據', '建立一頁作品集，收錄文案、企劃與成效截圖'],
+  hr: ['設計一份實習生招募流程與面試題庫', '整理一個校園活動的報名、通知、到場數據', '寫一篇雇主品牌貼文，說明公司適合誰'],
+  business_dev: ['列 20 個潛在合作名單並分類優先順序', '寫一封陌生開發信與一頁 pitch deck', '模擬一次合作提案，記錄反對意見與回應'],
+  consultant: ['做一份 5 頁 case interview 解題簡報', '用 MECE 架構拆一個產業問題', '整理一份市場研究摘要，標出假設、證據與建議'],
+  software_eng: ['完成一個可部署的小專案，附 README 與截圖', '修一個 bug 並寫下 debug 過程', '整理 GitHub 首頁，讓專案目的、技術棧、啟動方式一眼看懂'],
+  data_analyst: ['用公開資料完成清理、分析、視覺化流程', '寫一份 SQL 查詢作品，說明資料表與商業問題', '把圖表改成 3 句非技術主管看得懂的洞察'],
+  ux_researcher: ['訪談 3 位目標使用者並整理洞察', '做一份 usability test 腳本與測試紀錄', '把研究結論連回設計決策，不只列觀察'],
+  finance: ['建立一份簡單財務模型或估值表', '寫一頁產業研究摘要，包含風險與催化因素', '整理證照、課程、競賽與投資研究作品'],
+};

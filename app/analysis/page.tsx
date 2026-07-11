@@ -4,8 +4,9 @@ import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
+import ShareCard from '@/components/ShareCard';
 import { ROLES } from '@/lib/roles';
-import { loadQuest, saveQuest, award, regenerateQuestLine } from '@/lib/quest-store';
+import { loadQuest, saveQuest, award } from '@/lib/quest-store';
 import type { ResumeAnalysisResult } from '@/lib/types';
 
 type Phase = 'input' | 'loading' | 'result' | 'unavailable';
@@ -185,17 +186,6 @@ export default function AnalysisPage() {
         award('resume_improve', 40, '依建議修改履歷後重新分析');
       }
       saveQuest(data);
-
-      // 分析完成後重新生成關卡線（插入特訓班章）
-      try {
-        const rawProfile = localStorage.getItem('profile.v1');
-        if (rawProfile) {
-          const profileV1 = JSON.parse(rawProfile);
-          const analysisSummary = { checklist: r.checklist ?? {}, overall: r.overall };
-          regenerateQuestLine(profileV1, new Date().toISOString(), analysisSummary);
-        }
-      } catch { /* ignore */ }
-
       setPhase('result');
     } catch {
       setErrorMsg('網路錯誤，請確認連線後再試。');
@@ -370,6 +360,13 @@ export default function AnalysisPage() {
                   ))}
                 </div>
               )}
+
+              <ShareCard
+                title={`我的履歷健檢分數是 ${result.overall}/100`}
+                body={`目標職位：${ROLES.find((role) => role.id === result.roleId)?.name ?? '實習職位'}。優先補強：${result.gaps.slice(0, 3).map((gap) => gap.label).join('、') || '履歷證據' }。`}
+                cta="你也可以檢查看看自己的履歷缺口"
+                url="https://quest.lazybearlife.com/analysis"
+              />
 
               <p style={{ fontSize: '0.75rem', color: 'var(--ink-2)', marginBottom: 16 }}>
                 免責聲明：以上分析為 AI 參考建議，非錄取保證。
