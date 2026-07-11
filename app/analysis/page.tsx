@@ -173,6 +173,9 @@ export default function AnalysisPage() {
       const prev = data.analysis?.checklist ? { checklist: data.analysis.checklist } : null;
       data.analysisPrev = prev;
       data.analysis = { ...r, roleId, at: new Date().toISOString() };
+      // 先存分析結果再 award：award() 內部各自 load/save quest.v1，
+      // 若最後才用這份舊快照 saveQuest(data) 會覆蓋掉 award 寫入的點數/任務（P0-2）
+      saveQuest(data);
 
       // Check portfolio/quantified changes
       const prevChecklist = prev?.checklist ?? {};
@@ -185,7 +188,6 @@ export default function AnalysisPage() {
       if (data.analysis && Object.keys(data.analysisPrev?.checklist ?? {}).length > 0) {
         award('resume_improve', 40, '依建議修改履歷後重新分析');
       }
-      saveQuest(data);
       setPhase('result');
     } catch {
       setErrorMsg('網路錯誤，請確認連線後再試。');
