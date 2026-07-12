@@ -248,7 +248,7 @@ ${maskedText}
 
             if (!validated.success) {
               if (attempt < 1) continue;
-              finish({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' } });
+              finish({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' }, _debug: { zerr: validated.error.errors.slice(0, 6), sample: content.slice(0, 500) } });
               return;
             }
 
