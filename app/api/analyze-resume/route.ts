@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getRoleById } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // In-memory rate limiter: 5 requests/day/IP
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -108,57 +109,76 @@ const RequestSchema = z.object({
   roleId: z.string(),
 });
 
+// 回傳改為 SSE 串流：等 OpenAI 的 10-14 秒期間持續送心跳，避免 Cloudflare/Zeabur
+// 對長閒置請求回 502（gateway idle timeout）。前端讀 stream、過濾心跳、取最終 data。
+// AI 呼叫、PII 遮罩、zod 驗證、禁語過濾、rate limit 邏輯完全不變，只改傳輸方式。
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey.trim() === '') {
-    return NextResponse.json(
-      { ok: false, error: { code: 'AI_UNAVAILABLE', message: 'AI 分析功能目前未啟用，請稍後再試。' } },
-      { status: 503 }
-    );
-  }
+  const encoder = new TextEncoder();
 
-  const ip = getClientIp(req);
-  if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { ok: false, error: { code: 'RATE_LIMIT', message: '今日分析次數已達上限（5 次），明天再來吧。' } },
-      { status: 429 }
-    );
-  }
+  const stream = new ReadableStream({
+    async start(controller) {
+      let hb: ReturnType<typeof setInterval> | null = null;
+      let closed = false;
+      const finish = (obj: unknown) => {
+        if (hb) { clearInterval(hb); hb = null; }
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        } catch { /* controller 已關閉，忽略 */ }
+        closed = true;
+        try { controller.close(); } catch { /* ignore */ }
+      };
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: { code: 'INVALID_JSON', message: '請求格式錯誤' } }, { status: 400 });
-  }
+      try {
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey || apiKey.trim() === '') {
+          finish({ ok: false, error: { code: 'AI_UNAVAILABLE', message: 'AI 分析功能目前未啟用，請稍後再試。' } });
+          return;
+        }
 
-  const validation = RequestSchema.safeParse(body);
-  if (!validation.success) {
-    return NextResponse.json({ ok: false, error: { code: 'VALIDATION', message: validation.error.errors[0]?.message ?? '輸入驗證失敗' } }, { status: 400 });
-  }
+        const ip = getClientIp(req);
+        if (!checkRateLimit(ip)) {
+          finish({ ok: false, error: { code: 'RATE_LIMIT', message: '今日分析次數已達上限（5 次），明天再來吧。' } });
+          return;
+        }
 
-  const { text, roleId } = validation.data;
-  const role = getRoleById(roleId);
-  if (!role) {
-    return NextResponse.json({ ok: false, error: { code: 'INVALID_ROLE', message: '不支援的職位類型' } }, { status: 400 });
-  }
+        let body: unknown;
+        try {
+          body = await req.json();
+        } catch {
+          finish({ ok: false, error: { code: 'INVALID_JSON', message: '請求格式錯誤' } });
+          return;
+        }
 
-  const maskedText = maskPII(text);
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const validation = RequestSchema.safeParse(body);
+        if (!validation.success) {
+          finish({ ok: false, error: { code: 'VALIDATION', message: validation.error.errors[0]?.message ?? '輸入驗證失敗' } });
+          return;
+        }
 
-  // Industry-specific rules
-  const industryRules: Record<string, string> = {
-    consultant: '金融/顧問特例：GPA 4.0 以上是明顯優勢；無個案競賽經驗要在 issues 中提及。',
-    finance: '金融特例：缺少證照進度（金研院/CFA L1）需在 issues 中說明；GPA 是重要指標。',
-    software_eng: '軟體工程特例：應有 GitHub 連結；無 side project 或 GitHub 要在 issues 中提及。',
-    marketing: '行銷特例：作品集連結非常重要；無量化成效數字要標為警告。',
-    ux_researcher: 'UXR 特例：需有研究方法論的正確使用；訪談場次或研究對象數量很重要。',
-  };
+        const { text, roleId } = validation.data;
+        const role = getRoleById(roleId);
+        if (!role) {
+          finish({ ok: false, error: { code: 'INVALID_ROLE', message: '不支援的職位類型' } });
+          return;
+        }
 
-  const industrySpecific = industryRules[roleId] ?? '';
-  const skillsStr = role.skills.map((s) => `${s.key}(${s.label}, 權重${s.weight})`).join('、');
+        const maskedText = maskPII(text);
+        const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-  const systemPrompt = `你是台灣新創與外商的資深人資，專門評估大學生求職履歷。你的任務是針對「${role.name}」職位分析以下履歷文字，輸出嚴格的 JSON。
+        // Industry-specific rules
+        const industryRules: Record<string, string> = {
+          consultant: '金融/顧問特例：GPA 4.0 以上是明顯優勢；無個案競賽經驗要在 issues 中提及。',
+          finance: '金融特例：缺少證照進度（金研院/CFA L1）需在 issues 中說明；GPA 是重要指標。',
+          software_eng: '軟體工程特例：應有 GitHub 連結；無 side project 或 GitHub 要在 issues 中提及。',
+          marketing: '行銷特例：作品集連結非常重要；無量化成效數字要標為警告。',
+          ux_researcher: 'UXR 特例：需有研究方法論的正確使用；訪談場次或研究對象數量很重要。',
+        };
+
+        const industrySpecific = industryRules[roleId] ?? '';
+        const skillsStr = role.skills.map((s) => `${s.key}(${s.label}, 權重${s.weight})`).join('、');
+
+        const systemPrompt = `你是台灣新創與外商的資深人資，專門評估大學生求職履歷。你的任務是針對「${role.name}」職位分析以下履歷文字，輸出嚴格的 JSON。
 
 ## 六維評分 rubric（各 1-5 分）
 - relevance（相關性）：過去經歷與 ${role.name} 的契合程度
@@ -184,92 +204,112 @@ ${industrySpecific}
 - strengths 最多 3 條，每條附原文依據
 - 輸出純 JSON，不要 markdown code block`;
 
-  const userPrompt = `目標職位：${role.name}
+        const userPrompt = `目標職位：${role.name}
 
 履歷文字：
 ${maskedText}
 
 請輸出符合格式的 JSON 分析結果。`;
 
-  // Try with 1 retry on validation failure
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const { default: OpenAI } = await import('openai');
-      const client = new OpenAI({ apiKey });
+        // 進 AI 前開始送心跳，保持 origin→CF→前端 連線活躍
+        hb = setInterval(() => {
+          if (!closed) {
+            try { controller.enqueue(encoder.encode(`: keep-alive\n\n`)); } catch { /* ignore */ }
+          }
+        }, 3000);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30_000);
+        // Try with 1 retry on validation failure
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const { default: OpenAI } = await import('openai');
+            const client = new OpenAI({ apiKey });
 
-      const completion = await client.chat.completions.create(
-        {
-          model,
-          temperature: 0,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          response_format: { type: 'json_object' },
-        },
-        { signal: controller.signal }
-      );
+            const controller2 = new AbortController();
+            const timeoutId = setTimeout(() => controller2.abort(), 30_000);
 
-      clearTimeout(timeoutId);
+            const completion = await client.chat.completions.create(
+              {
+                model,
+                temperature: 0,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                ],
+                response_format: { type: 'json_object' },
+              },
+              { signal: controller2.signal }
+            );
 
-      const content = completion.choices[0]?.message?.content ?? '';
-      const parsed = JSON.parse(content);
-      const validated = AnalysisResultSchema.safeParse(parsed);
+            clearTimeout(timeoutId);
 
-      if (!validated.success) {
-        if (attempt < 1) continue;
-        return NextResponse.json({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' } }, { status: 502 });
+            const content = completion.choices[0]?.message?.content ?? '';
+            const parsed = JSON.parse(content);
+            const validated = AnalysisResultSchema.safeParse(parsed);
+
+            if (!validated.success) {
+              if (attempt < 1) continue;
+              finish({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' } });
+              return;
+            }
+
+            // Deterministic post-processing: compute gaps
+            const result = validated.data;
+            const gaps = role.skills.map((s) => {
+              const ev = result.skillEvidence.find((e) => e.skillKey === s.key);
+              const strength = ev?.strength ?? 0;
+              return {
+                skillKey: s.key,
+                label: s.label,
+                weight: s.weight,
+                strength,
+                gapScore: s.weight * (2 - strength),
+              };
+            }).sort((a, b) => b.gapScore - a.gapScore).slice(0, 5);
+
+            // Recommended task codes based on gaps
+            const recommendedTaskCodes = Array.from(new Set(
+              gaps.slice(0, 3).flatMap((g) => {
+                if (g.strength === 0) return ['resume_analyzed', 'learn_resource'];
+                if (g.strength === 1) return ['resume_improve', 'mini_artifact'];
+                return ['read_target_3'];
+              })
+            )).slice(0, 5);
+
+            const finalResult = {
+              ...result,
+              gaps,
+              recommendedTaskCodes,
+            };
+
+            // Apply forbidden linter
+            const linted = lintOutput(finalResult) as typeof finalResult;
+
+            console.log(`[analyze-resume] roleId=${roleId} len=${text.length} overall=${result.overall} confidence=${result.confidence}`);
+            finish({ ok: true, data: linted });
+            return;
+          } catch (err) {
+            const isAbort = err instanceof Error && err.name === 'AbortError';
+            console.log(`[analyze-resume] attempt=${attempt} abort=${isAbort} err=${String(err).slice(0, 100)}`);
+            if (attempt < 1) continue;
+            finish({ ok: false, error: { code: 'AI_ERROR', message: 'AI 服務暫時無法使用，請稍後再試。' } });
+            return;
+          }
+        }
+
+        finish({ ok: false, error: { code: 'AI_ERROR', message: 'AI 服務暫時無法使用，請稍後再試。' } });
+      } catch {
+        finish({ ok: false, error: { code: 'AI_ERROR', message: 'AI 服務暫時無法使用，請稍後再試。' } });
       }
+    },
+  });
 
-      // Deterministic post-processing: compute gaps
-      const result = validated.data;
-      const gaps = role.skills.map((s) => {
-        const ev = result.skillEvidence.find((e) => e.skillKey === s.key);
-        const strength = ev?.strength ?? 0;
-        return {
-          skillKey: s.key,
-          label: s.label,
-          weight: s.weight,
-          strength,
-          gapScore: s.weight * (2 - strength),
-        };
-      }).sort((a, b) => b.gapScore - a.gapScore).slice(0, 5);
-
-      // Recommended task codes based on gaps
-      const gapDimMap: Record<string, string[]> = {
-        'portfolio': ['resume_analyzed', 'portfolio_added'],
-        'experience': ['read_target_3', 'coffee_chat'],
-        'skills': ['learn_resource', 'mini_artifact'],
-      };
-      const recommendedTaskCodes = Array.from(new Set(
-        gaps.slice(0, 3).flatMap((g) => {
-          if (g.strength === 0) return ['resume_analyzed', 'learn_resource'];
-          if (g.strength === 1) return ['resume_improve', 'mini_artifact'];
-          return ['read_target_3'];
-        })
-      )).slice(0, 5);
-
-      const finalResult = {
-        ...result,
-        gaps,
-        recommendedTaskCodes,
-      };
-
-      // Apply forbidden linter
-      const linted = lintOutput(finalResult) as typeof finalResult;
-
-      console.log(`[analyze-resume] roleId=${roleId} len=${text.length} overall=${result.overall} confidence=${result.confidence}`);
-      return NextResponse.json({ ok: true, data: linted });
-    } catch (err) {
-      const isAbort = err instanceof Error && err.name === 'AbortError';
-      console.log(`[analyze-resume] attempt=${attempt} abort=${isAbort} err=${String(err).slice(0, 100)}`);
-      if (attempt < 1) continue;
-      return NextResponse.json({ ok: false, error: { code: 'AI_ERROR', message: 'AI 服務暫時無法使用，請稍後再試。' } }, { status: 502 });
-    }
-  }
-
-  return NextResponse.json({ ok: false, error: { code: 'AI_ERROR', message: 'AI 服務暫時無法使用，請稍後再試。' } }, { status: 502 });
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      // 阻止 nginx/proxy 緩衝，確保心跳即時 flush 到前端
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }

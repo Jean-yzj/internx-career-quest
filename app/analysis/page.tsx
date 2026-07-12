@@ -149,13 +149,33 @@ export default function AnalysisPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: resumeText, roleId }),
       });
-      const json = await res.json();
-      if (!res.ok) {
+      // 後端改為 SSE 串流（等 AI 的 10-14 秒期間送心跳，避免長請求撞 gateway 502）：
+      // 讀 stream、過濾「: keep-alive」心跳、取最終 data 事件的 JSON
+      const reader = res.body?.getReader();
+      let json: { ok?: boolean; data?: FullResult; error?: { code?: string; message?: string } } | null = null;
+      if (reader) {
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (trimmed.startsWith('data:')) {
+              try { json = JSON.parse(trimmed.slice(trimmed.indexOf('data:') + 5).trim()); } catch { /* ignore malformed */ }
+            }
+          }
+        }
+      }
+      if (!json || !json.ok) {
         if (json?.error?.code === 'AI_UNAVAILABLE') {
           setPhase('unavailable');
           return;
         }
-        if (res.status === 429) {
+        if (json?.error?.code === 'RATE_LIMIT') {
           setErrorMsg(json?.error?.message ?? '已達每日分析上限（5 次）。');
           setPhase('input');
           return;
