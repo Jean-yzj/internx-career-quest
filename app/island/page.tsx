@@ -607,15 +607,19 @@ export default function IslandPage() {
         {/* 無 profile → 顯示 CTA */}
         {!hasProfile && (
           <div className={styles.registerCta}>
-            <div className={styles.registerCtaTitle}>完成註冊，生成你的冒險地圖</div>
+            <div className={styles.registerCtaTitle}>
+              {questData?.profile ? '快完成了！補 3 題解鎖你的專屬地圖' : '完成註冊，生成你的冒險地圖'}
+            </div>
             <div className={styles.registerCtaDesc}>
-              告訴我你的年級與目標，藍藍幫你規劃專屬的職涯關卡路線。
+              {questData?.profile
+                ? '你在健檢選的方向我先幫你記著了，只差年級和暱稱就能生成專屬關卡路線。'
+                : '告訴我你的年級與目標，藍藍幫你規劃專屬的職涯關卡路線。'}
             </div>
             <a href="/onboarding" className={styles.registerCtaBtn}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M10 2l2.5 5h5.5l-4.5 3.5 1.5 5L10 13l-5 2.5 1.5-5L2 7h5.5Z" fill="#fff" opacity=".9"/>
               </svg>
-              開始生成地圖
+              {questData?.profile ? '補完解鎖地圖' : '開始生成地圖'}
             </a>
           </div>
         )}

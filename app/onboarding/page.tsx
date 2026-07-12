@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
@@ -47,6 +47,19 @@ export default function OnboardingPage() {
   const [transferInput, setTransferInput] = useState('');
   const [transferErr, setTransferErr] = useState('');
   const [transferring, setTransferring] = useState(false);
+
+  // 承接「3 分鐘健檢」(quick-start) 已選的方向與狀態，減少重複輸入（P0-3 雙 profile 銜接）
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('quest.v1');
+      if (!raw) return;
+      const p = JSON.parse(raw)?.profile;
+      if (!p) return;
+      if (p.targetRoleId) setGoalRoleId(p.targetRoleId);
+      if (p.careerStatus === 'targeting' || p.careerStatus === 'applying') setHasResume(true);
+      if (p.careerStatus === 'applying') setHasApplied(true);
+    } catch { /* ignore */ }
+  }, []);
 
   function validateNickname(v: string) {
     if (v.length < 2 || v.length > 12) return '暱稱需 2–12 字';
