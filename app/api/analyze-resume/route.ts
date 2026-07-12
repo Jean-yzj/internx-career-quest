@@ -202,7 +202,18 @@ ${industrySpecific}
 - 找不到資訊就給低分並在 issues 說明，禁止腦補補值
 - 每個 issue 必須有具體 suggestion（一句話可做的改善）
 - strengths 最多 3 條，每條附原文依據
-- 輸出純 JSON，不要 markdown code block`;
+- 輸出純 JSON，不要 markdown code block
+
+## 輸出 JSON 結構（key 一律用以下英文，絕對不可翻成中文，嚴格照此結構與值域）
+{
+  "dimensions": { "relevance": 1-5整數, "evidence": 1-5整數, "completeness": 1-5整數, "readability": 1-5整數, "credibility": 1-5整數, "industry_fit": 1-5整數 },
+  "overall": 0-100整數,
+  "issues": [ { "category": "分類字串", "severity": "紅線" 或 "警告" 或 "微調", "quote": "原文片段(可省略)", "suggestion": "一句可執行的建議" } ],
+  "strengths": ["優點字串（最多3條）"],
+  "skillEvidence": [ { "skillKey": "上方列出的技能key", "strength": 0 或 1 或 2 } ],
+  "checklist": { "檢查項目key": true 或 false },
+  "confidence": "high" 或 "medium" 或 "low"
+}`;
 
         const userPrompt = `目標職位：${role.name}
 
@@ -248,7 +259,7 @@ ${maskedText}
 
             if (!validated.success) {
               if (attempt < 1) continue;
-              finish({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' }, _debug: { zerr: validated.error.errors.slice(0, 6), sample: content.slice(0, 500) } });
+              finish({ ok: false, error: { code: 'AI_OUTPUT_INVALID', message: 'AI 回傳格式異常，請重試。' } });
               return;
             }
 
