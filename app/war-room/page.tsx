@@ -16,6 +16,7 @@ import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
 import JobsRadar from '@/components/JobsRadar';
 import { loadData, addApplication, updateApplication, deleteApplication, mergeImport } from '@/lib/store';
+import { bridgeWarRoomEvents } from '@/lib/quest-store';
 import type { WarRoomData } from '@/lib/types';
 import { z } from 'zod';
 
@@ -69,10 +70,21 @@ export default function WarRoomPage() {
   const [sizeWarning, setSizeWarning] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [pasteClearSignal, setPasteClearSignal] = useState(0);
+  const [xpToast, setXpToast] = useState<number | null>(null);
 
   useEffect(() => {
     const data = loadData();
     setApplications(data.applications);
+  }, []);
+
+  // 戰情室操作後即時把點數同步進 quest（bridge 冪等，重複呼叫不重複發點），
+  // 並在當下顯示「+X XP」回饋——修正原本要跑去 /island 才會同步的缺口
+  const syncAndNotify = useCallback(() => {
+    const gained = bridgeWarRoomEvents();
+    if (gained > 0) {
+      setXpToast(gained);
+      window.setTimeout(() => setXpToast(null), 2200);
+    }
   }, []);
 
   const handleParseResult = useCallback((result: ParseResult, rawText: string) => {
@@ -85,7 +97,8 @@ export default function WarRoomPage() {
     setPendingResult(null);
     setPasteClearSignal((c) => c + 1);
     setActiveTab('calendar');
-  }, []);
+    syncAndNotify();
+  }, [syncAndNotify]);
 
   const handleCancelConfirm = useCallback(() => {
     setPendingResult(null);
@@ -99,7 +112,8 @@ export default function WarRoomPage() {
     const data = updateApplication(updated);
     setApplications(data.applications);
     setEditingApp(null);
-  }, []);
+    syncAndNotify();
+  }, [syncAndNotify]);
 
   const handleDelete = useCallback((id: string) => {
     const data = deleteApplication(id);
@@ -108,8 +122,10 @@ export default function WarRoomPage() {
 
   const handleStatusChange = useCallback((app: Application, newStatus: Status) => {
     const updated = changeStatus(app, newStatus);
+    updateApplication(updated); // 修正：原本只更新 UI state，沒寫回 warroom.v1，重整會丟失狀態變更
     setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-  }, []);
+    syncAndNotify();
+  }, [syncAndNotify]);
 
   const handleOpenCard = useCallback((id: string) => {
     const app = applications.find((a) => a.id === id);
@@ -121,7 +137,8 @@ export default function WarRoomPage() {
     const data = addApplication(example);
     setApplications(data.applications);
     setActiveTab('list');
-  }, []);
+    syncAndNotify();
+  }, [syncAndNotify]);
 
   // 從職缺雷達預填職缺
   const handleAddFromRadar = useCallback((prefill: {
@@ -159,7 +176,8 @@ export default function WarRoomPage() {
     const data = addApplication(app);
     setApplications(data.applications);
     setActiveTab('list');
-  }, []);
+    syncAndNotify();
+  }, [syncAndNotify]);
 
   const handleExportIcs = useCallback(() => {
     const content = generateIcs(applications);
@@ -225,6 +243,16 @@ export default function WarRoomPage() {
             </button>
           </div>
         </div>
+
+        {xpToast !== null && (
+          <div style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 100, background: 'var(--sand)', color: 'var(--ink)', fontWeight: 700, padding: '10px 18px', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', display: 'flex', alignItems: 'center', gap: 6 }} role="status">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="9" fill="var(--sand-deep)"/>
+              <path d="M10 5.5v9M5.5 10h9" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
+            +{xpToast} XP 已入帳
+          </div>
+        )}
 
         {sizeWarning && (
           <div className="paste-error" style={{ marginBottom: 12 }} role="alert">

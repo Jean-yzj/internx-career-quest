@@ -6,7 +6,8 @@ import Footer from '@/components/Footer';
 import Mascot from '@/components/Mascot';
 import ShareCard from '@/components/ShareCard';
 import { ROLES } from '@/lib/roles';
-import { loadQuest, saveQuest, award } from '@/lib/quest-store';
+import { loadQuest, saveQuest, award, regenerateQuestLine } from '@/lib/quest-store';
+import type { ProfileV1 } from '@/lib/quest-line';
 import type { ResumeAnalysisResult } from '@/lib/types';
 
 type Phase = 'input' | 'loading' | 'result' | 'unavailable';
@@ -208,6 +209,16 @@ export default function AnalysisPage() {
       if (data.analysis && Object.keys(data.analysisPrev?.checklist ?? {}).length > 0) {
         award('resume_improve', 40, '依建議修改履歷後重新分析');
       }
+
+      // 分析缺口即時重生關卡線（插入「藍藍的特訓班」補強關），不必等回島頁才觸發
+      try {
+        const rawProfile = localStorage.getItem('profile.v1');
+        if (rawProfile) {
+          const profileV1 = JSON.parse(rawProfile) as ProfileV1;
+          regenerateQuestLine(profileV1, new Date().toISOString(), { checklist: newChecklist, overall: r.overall });
+        }
+      } catch { /* ignore */ }
+
       setPhase('result');
     } catch {
       setErrorMsg('網路錯誤，請確認連線後再試。');

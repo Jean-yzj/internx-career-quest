@@ -279,16 +279,18 @@ export function markDailyDone(code: string, data: QuestData): QuestData {
 /**
  * Bridge: read warroom.v1 and award matching tasks (idempotent)
  */
-export function bridgeWarRoomEvents(): void {
-  if (!isClient()) return;
+// 回傳這次新發放的點數（0=沒有新點數），供 war-room 當下顯示「+X XP」回饋
+export function bridgeWarRoomEvents(): number {
+  if (!isClient()) return 0;
+  const before = loadQuest().totalPoints;
   try {
     const raw = localStorage.getItem('warroom.v1');
-    if (!raw) return;
+    if (!raw) return 0;
     const wr = JSON.parse(raw) as { schemaVersion: number; applications: Array<{
       id: string; deadline?: string; interviews?: Array<unknown>;
       statusHistory?: Array<{ to: string; at: string }>;
     }> };
-    if (!wr.applications?.length) return;
+    if (!wr.applications?.length) return 0;
 
     const apps = wr.applications;
     const total = apps.length;
@@ -306,4 +308,5 @@ export function bridgeWarRoomEvents(): void {
   } catch {
     // ignore
   }
+  return loadQuest().totalPoints - before;
 }
