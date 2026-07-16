@@ -6,6 +6,7 @@ import { ROLES, ROLE_IDS } from '@/lib/roles';
 import { getRoleGuide, ROLE_PROOF_IDEAS } from '@/lib/role-guide';
 import { GUILD_DEFS } from '@/lib/guilds';
 import RoleJobs from '@/components/RoleJobs';
+import PlanStarter from '@/components/PlanStarter';
 import styles from '../roles.module.css';
 
 const BASE = 'https://quest.lazybearlife.com';
@@ -49,11 +50,36 @@ export default async function RoleDetailPage({
   if (!role || !guide) notFound();
 
   const guild = GUILD_DEFS.find((g) => g.roleId === id) ?? null;
+  const proofIdeas = ROLE_PROOF_IDEAS[id] ?? [];
+  const faqs = [
+    {
+      question: `${role.name}實習要先準備什麼？`,
+      answer: guide.prepare.slice(0, 3).join('；'),
+    },
+    {
+      question: `沒有相關實習經驗，也可以投 ${role.name} 嗎？`,
+      answer: `可以先從課堂、社團、打工或個人專案累積證據。第一步可以這樣做：${guide.entryPath[0]}`,
+    },
+    {
+      question: `${role.name}作品集可以放什麼？`,
+      answer: proofIdeas.length > 0 ? proofIdeas.join('；') : guide.entryPath.slice(0, 2).join('；'),
+    },
+  ];
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+    })),
+  };
 
   return (
     <div className="site-wrapper">
       <SiteNav activePath="/roles" />
       <main className={styles.detailPage}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         {/* Back */}
         <Link href="/roles" className={styles.backLink}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -129,11 +155,11 @@ export default async function RoleDetailPage({
         </section>
 
         {/* 可以先做這些作品（原 /prep 併入） */}
-        {ROLE_PROOF_IDEAS[id] && ROLE_PROOF_IDEAS[id].length > 0 && (
+        {proofIdeas.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>可以先做這些作品</h2>
             <ul className={styles.itemList}>
-              {ROLE_PROOF_IDEAS[id].map((item, i) => (
+              {proofIdeas.map((item, i) => (
                 <li key={i}>{item}</li>
               ))}
             </ul>
@@ -178,17 +204,24 @@ export default async function RoleDetailPage({
         {/* 現在的實習（client 動態載入，避免 SSG 烤死實習數） */}
         <RoleJobs roleId={id} />
 
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>常見問題</h2>
+          <div className={styles.faqList}>
+            {faqs.map((faq) => (
+              <details key={faq.question} className={styles.faqItem}>
+                <summary>{faq.question}</summary>
+                <p>{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
         {/* Bottom CTAs */}
         <section className={styles.section}>
           <div className={styles.ctaRow}>
-            <Link href="/quiz/ability" className={styles.ctaPrimary}>
+            <PlanStarter roleId={role.id} className={styles.ctaPrimary} />
+            <Link href="/quiz/ability" className={styles.ctaSecondary}>
               測你的準備度
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M5 10h10M11 6l4 4-4 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </Link>
-            <Link href="/onboarding" className={styles.ctaSecondary}>
-              設為目標開始闖關
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M5 10h10M11 6l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

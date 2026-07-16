@@ -128,3 +128,18 @@ export function downloadIcs(content: string, filename = 'internx-war-room.ics'):
     window.open(`data:text/calendar;charset=utf-8,${encoded}`);
   }
 }
+
+export function generateWeeklyReviewIcs(): string {
+  const next = new Date();
+  const daysUntilSunday = (7 - next.getDay()) % 7 || 7;
+  next.setDate(next.getDate() + daysUntilSunday);
+  const date = `${next.getFullYear()}${String(next.getMonth() + 1).padStart(2, '0')}${String(next.getDate()).padStart(2, '0')}`;
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//InternX Weekly Review//ZH', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT', 'UID:internx-weekly-review', 'SUMMARY:職涯闖關島｜每週投遞回顧',
+    `DTSTART:${date}T190000`, `DTEND:${date}T193000`, 'RRULE:FREQ=WEEKLY;BYDAY=SU',
+    'DESCRIPTION:回顧本週投遞、更新狀態，選出下週最重要的一步。https://quest.lazybearlife.com/war-room',
+    'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:今晚花 10 分鐘回顧本週投遞',
+    'END:VALARM', 'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n');
+}

@@ -7,6 +7,7 @@ import { generateIcs, downloadIcs } from '@/lib/ics';
 import {
   IconClose, IconPlus, IconTrash, IconLink, IconCopy, IconCheck, IconDownload
 } from './Icons';
+import ResumeMatchPanel from './ResumeMatchPanel';
 
 interface EditDrawerProps {
   app: Application | null;
@@ -104,6 +105,7 @@ export default function EditDrawer({ app, onSave, onDelete, onClose }: EditDrawe
         </div>
 
         <div className="drawer-body">
+          <ResumeMatchPanel app={form} />
           <div className="drawer-field-group">
             <label className="field-label">公司名稱 *</label>
             <input type="text" value={form.company} onChange={(e) => updateField('company', e.target.value)} />

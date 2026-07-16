@@ -359,6 +359,11 @@
   margin-bottom: 2px;
 }
 
+.faqList { display: flex; flex-direction: column; gap: 8px; }
+.faqItem { border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--card); padding: 12px 14px; }
+.faqItem summary { cursor: pointer; color: var(--ink); font-size: .9375rem; font-weight: 700; line-height: 1.5; }
+.faqItem p { color: var(--ink-2); font-size: .875rem; line-height: 1.7; padding-top: 10px; }
+
 .guildTagline {
   font-size: 0.8125rem;
   color: var(--ink-2);
@@ -447,7 +452,10 @@
   font-size: 0.9375rem;
   font-weight: 700;
   padding: 12px 20px;
+  border: 0;
   border-radius: 99px;
+  cursor: pointer;
+  font-family: inherit;
   text-decoration: none;
   text-align: center;
   transition: background 0.15s;

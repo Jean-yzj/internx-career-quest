@@ -15,6 +15,7 @@ import EditDrawer from '@/components/EditDrawer';
 import Footer from '@/components/Footer';
 import SiteNav from '@/components/SiteNav';
 import JobsRadar from '@/components/JobsRadar';
+import WeeklyReview from '@/components/WeeklyReview';
 import { loadData, addApplication, updateApplication, deleteApplication, mergeImport } from '@/lib/store';
 import { bridgeWarRoomEvents } from '@/lib/quest-store';
 import type { WarRoomData } from '@/lib/types';
@@ -122,7 +123,6 @@ export default function WarRoomPage() {
 
   const handleStatusChange = useCallback((app: Application, newStatus: Status) => {
     const updated = changeStatus(app, newStatus);
-    updateApplication(updated); // 修正：原本只更新 UI state，沒寫回 warroom.v1，重整會丟失狀態變更
     setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
     syncAndNotify();
   }, [syncAndNotify]);
@@ -280,6 +280,8 @@ export default function WarRoomPage() {
         <JobsRadar onAddJob={handleAddFromRadar} />
 
         <DueStrip applications={applications} onOpenCard={handleOpenCard} />
+
+        <WeeklyReview applications={applications} />
 
         <nav className="tabs-bar" aria-label="檢視模式">
           <button type="button" className={`tab-btn ${activeTab === 'calendar' ? 'tab-btn-active' : ''}`} onClick={() => setActiveTab('calendar')} aria-current={activeTab === 'calendar' ? 'page' : undefined}>

@@ -36,6 +36,16 @@ function CopyIcon({ copied }: { copied: boolean }) {
   );
 }
 
+function ImageIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="6" cy="6" r="1.3" fill="currentColor"/>
+      <path d="M3.5 12l3.2-3 2.1 1.8 1.7-1.6 2 2.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 export default function ShareCard({ title, body, cta = '一起來職涯闖關島看看', url }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
   const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.origin : 'https://quest.lazybearlife.com');
@@ -63,6 +73,67 @@ export default function ShareCard({ title, body, cta = '一起來職涯闖關島
     }
   }
 
+  function downloadShareImage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#EAF4FF';
+    ctx.fillRect(0, 0, 1200, 630);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#B8D8FF';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(72, 64, 1056, 502, 28);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#0182FD';
+    ctx.beginPath();
+    ctx.arc(132, 126, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('職', 132, 138);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#1861A8';
+    ctx.font = '700 28px sans-serif';
+    ctx.fillText('職涯闖關島', 184, 137);
+
+    function drawWrapped(text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
+      const chars = Array.from(text);
+      let line = '';
+      let lineIndex = 0;
+      for (const char of chars) {
+        const next = line + char;
+        if (ctx!.measureText(next).width > maxWidth && line) {
+          ctx!.fillText(line, x, y + lineIndex * lineHeight);
+          line = char;
+          lineIndex += 1;
+          if (lineIndex >= maxLines) return;
+        } else {
+          line = next;
+        }
+      }
+      if (lineIndex < maxLines && line) ctx!.fillText(line, x, y + lineIndex * lineHeight);
+    }
+
+    ctx.fillStyle = '#18233A';
+    ctx.font = '700 54px "Noto Sans TC", sans-serif';
+    drawWrapped(title, 112, 250, 930, 72, 2);
+    ctx.fillStyle = '#5A6880';
+    ctx.font = '400 32px "Noto Sans TC", sans-serif';
+    drawWrapped(body, 112, 405, 930, 48, 2);
+    ctx.fillStyle = '#0182FD';
+    ctx.font = '700 25px "Noto Sans TC", sans-serif';
+    ctx.fillText('quest.lazybearlife.com', 112, 520);
+    const link = document.createElement('a');
+    link.download = 'career-quest-result.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
   return (
     <div className="share-card">
       <div className="share-card-copy">
@@ -78,6 +149,10 @@ export default function ShareCard({ title, body, cta = '一起來職涯闖關島
         <button type="button" className="btn-ghost share-card-btn" onClick={copyShareText}>
           <CopyIcon copied={copied} />
           {copied ? '已複製' : '複製'}
+        </button>
+        <button type="button" className="btn-ghost share-card-btn" onClick={downloadShareImage}>
+          <ImageIcon />
+          下載圖片
         </button>
       </div>
     </div>

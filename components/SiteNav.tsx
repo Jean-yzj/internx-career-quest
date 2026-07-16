@@ -61,6 +61,9 @@ export default function SiteNav({ activePath }: { activePath?: string }) {
           <Link href="/roles" className={`nav-link${activePath?.startsWith('/roles') ? ' nav-link-active' : ''}`}>
             <span className="nav-label">職位圖鑑</span>
           </Link>
+          <Link href="/plan" className={`nav-link${activePath === '/plan' ? ' nav-link-active' : ''}`}>
+            <span className="nav-label">7 天計畫</span>
+          </Link>
           <Link href="/war-room" className={`nav-link${activePath === '/war-room' ? ' nav-link-active' : ''}`}>
             <span className="nav-label">戰情室</span>
           </Link>
