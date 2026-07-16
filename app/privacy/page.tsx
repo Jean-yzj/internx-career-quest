@@ -17,7 +17,7 @@ export default function PrivacyPage() {
 
       <main className="static-page">
         <h1>隱私權政策</h1>
-        <p className="page-meta">生效日期：2026-07-06｜版本：1.0</p>
+        <p className="page-meta">生效日期：2026-07-17｜版本：1.1</p>
 
         <p>職涯闖關島（網址：https://quest.lazybearlife.com）由職途有限公司（下稱「我們」）經營。我們重視你的個人資料，本政策說明我們如何處理你的資訊，以及你擁有的權利。本政策依中華民國《個人資料保護法》第 8 條規定撰寫，用字盡量白話。</p>
 
@@ -29,16 +29,19 @@ export default function PrivacyPage() {
 
         <p><strong>基本連線紀錄：</strong>伺服器自動記錄 IP 位址、請求路徑、HTTP 狀態碼與時間戳，用於系統安全與防濫用。這是網路服務的必要行為，無法關閉。</p>
 
+        <p><strong>可選的 Google 登入：</strong>若你主動選擇使用 Google 登入，我們會接收 Google 帳號識別碼與 Email，並將它們與你的個人檔案 deviceId 綁定，用於登入驗證及跨裝置找回個人檔案。Email 不會公開顯示，也不會用於廣告行銷。</p>
+
         <h2>2. 我們為什麼蒐集（蒐集目的）</h2>
         <ul>
           <li>提供 AI 職缺辨識服務（法定特定目的：契約履行）</li>
           <li>維護系統安全、偵測並防止濫用（速率限制）</li>
           <li>服務品質監測（僅數字指標，無文字內容）</li>
+          <li>在你選擇登入時驗證帳號，並提供跨裝置找回個人檔案</li>
         </ul>
 
         <h2>3. 個資的利用期間、地區、對象與方式</h2>
         <ul>
-          <li><strong>期間：</strong>請求生命週期內（解析完畢即丟棄）；IP 連線日誌依伺服器設定約 30 天後滾動刪除。</li>
+          <li><strong>期間：</strong>AI 請求在解析完畢後丟棄；IP 連線日誌依伺服器設定約 30 天後滾動刪除；Google 綁定資料保存至你解除綁定、提出刪除請求或服務終止。</li>
           <li><strong>地區：</strong>本服務架設於 Zeabur 新加坡節點，AI 解析透過 OpenAI API 傳至美國。你的申請記錄資料存在你的裝置，不跨境傳輸。</li>
           <li><strong>對象：</strong>我們，以及提供 AI 解析的 OpenAI（僅解析請求的即時處理）。我們不出售個人資料。</li>
           <li><strong>方式：</strong>電腦系統自動化處理；司法或主管機關依法要求時，我們可能依法提供。</li>
@@ -47,6 +50,7 @@ export default function PrivacyPage() {
         <h2>4. 第三方服務</h2>
         <ul>
           <li><strong>OpenAI：</strong>AI 職缺辨識的底層模型提供者。職缺文字在解析時傳送至 OpenAI API，適用其隱私政策（platform.openai.com/privacy）。若你選擇「基本規則解析」路徑，文字不傳送至 OpenAI。</li>
+          <li><strong>Google：</strong>你主動使用 Google 登入時的身分驗證提供者。我們只要求 openid、Email 與基本個人檔案範圍，不會讀取 Google Drive、聯絡人或郵件。</li>
           <li><strong>Zeabur：</strong>伺服器代管服務，提供基礎設施（新加坡節點）。</li>
         </ul>
 
@@ -56,7 +60,8 @@ export default function PrivacyPage() {
           <li><strong>暱稱與頭像：</strong>你在設定個人檔案時自訂的暱稱（2–12 字）與頭像編號。</li>
           <li><strong>年級與目標職位：</strong>你填寫的年級與目標職位，用於推薦關卡路線。</li>
           <li><strong>點數摘要：</strong>累積點數（totalPoints）、等級（level）、連續天數（streak）與徽章數，用於排行榜顯示。點數明細存在你的裝置，不上傳至伺服器。</li>
-          <li><strong>裝置識別碼：</strong>瀏覽器產生的隨機 ID（deviceId），僅用於識別你的操作裝置，不對應真實身分。</li>
+          <li><strong>裝置識別碼：</strong>瀏覽器產生的隨機 ID（deviceId），平時僅用於識別操作裝置；你選擇 Google 登入後，會與帳號識別碼綁定。</li>
+          <li><strong>Google 帳號識別碼與 Email：</strong>只有你主動選擇 Google 登入時才會儲存，用於登入與找回個人檔案；不會出現在排行榜或公會頁面。</li>
         </ul>
         <p><strong>排行榜公開顯示：</strong>你的暱稱、頭像、等級與點數對所有使用者公開顯示於排行榜頁面（/profile）。</p>
         <p><strong>刪除請求：</strong>若你希望刪除個人檔案與排行榜資料，請寄信至 <a href="mailto:internx.me@gmail.com">internx.me@gmail.com</a>，說明你的暱稱及請求內容，我們將於合理期間內處理。</p>
@@ -67,13 +72,13 @@ export default function PrivacyPage() {
           <li><strong>暱稱：</strong>你在設定公會身分時自訂的暱稱（2–12 字）。</li>
           <li><strong>貼文內容：</strong>你在公會發表的討論文字，對所有使用者公開顯示。</li>
           <li><strong>加入紀錄：</strong>你加入哪些公會的紀錄（與暱稱綁定）。</li>
-          <li><strong>裝置識別碼：</strong>瀏覽器產生的隨機 ID（deviceId），僅用於識別你的操作裝置，不對應真實身分。</li>
+          <li><strong>裝置識別碼：</strong>瀏覽器產生的隨機 ID（deviceId），用於識別操作裝置與公會操作；你選擇 Google 登入後，可能與個人檔案帳號資料關聯。</li>
         </ul>
-        <p>上述資料不與其他個人身分資訊（如真實姓名、Email）綁定。公會功能目前無帳號制，所有身分均為匿名暱稱制。</p>
+        <p>公會對外仍以暱稱顯示，不公開 Email。若你使用同一個 deviceId 綁定 Google 帳號，伺服器可能為提供登入與資料管理而關聯個人檔案及公會紀錄。</p>
         <p><strong>刪除請求：</strong>若你希望刪除公會內的貼文或相關資料，請寄信至 <a href="mailto:internx.me@gmail.com">internx.me@gmail.com</a>，說明你的暱稱及請求內容，我們將於合理期間內處理。</p>
 
         <h2>5. Cookie 與本地儲存</h2>
-        <p>本服務不使用第三方廣告追蹤 Cookie。我們使用瀏覽器 localStorage 儲存申請記錄、闖關進度與 7 天計畫。你可隨時透過瀏覽器清除 localStorage 刪除本機資料；清除後資料無法復原，建議先使用「JSON 備份」功能匯出戰情室資料。</p>
+        <p>本服務不使用第三方廣告追蹤 Cookie。我們使用瀏覽器 localStorage 儲存申請記錄、闖關進度與 7 天計畫。你選擇 Google 登入時，系統會使用短效 OAuth state Cookie 與最長 180 天的 HttpOnly 登入 Cookie，供防止偽造登入及維持登入狀態。你可透過登出清除登入 Cookie，或透過瀏覽器清除 localStorage 刪除本機資料；清除後資料無法復原，建議先使用「JSON 備份」功能匯出戰情室資料。</p>
 
         <h2>6. 你的資料在哪裡，你完全掌控</h2>
         <p>你的申請記錄存在你的瀏覽器，我們無法讀取。你可以透過以下方式管理：</p>
@@ -84,7 +89,7 @@ export default function PrivacyPage() {
         </ul>
 
         <h2>7. 你的權利（個資法第 3 條）</h2>
-        <p>對於我們所持有的少量個人資料（主要為 IP 連線紀錄），你擁有以下權利，來信行使：</p>
+        <p>對於我們所持有的個人檔案、Google 綁定資料、公會內容與 IP 連線紀錄，你擁有以下權利，來信行使：</p>
         <ol>
           <li>查詢或閱覽</li>
           <li>請求複製本</li>
