@@ -8,16 +8,21 @@ import Mascot from '@/components/Mascot';
 import { buildActionPlan, loadActionPlan, saveActionPlan, toggleActionPlanTask, type ActionPlan } from '@/lib/action-plan';
 import { loadQuest } from '@/lib/quest-store';
 import { getRoleById, ROLES, type RoleId } from '@/lib/roles';
+import { getActionPlanWorkTaskIds } from '@/lib/action-plan-work';
 import styles from './plan.module.css';
 
 export default function PlanPage() {
   const [plan, setPlan] = useState<ActionPlan | null | undefined>(undefined);
   const [roleId, setRoleId] = useState<RoleId>('product_manager');
+  const [draftTaskIds, setDraftTaskIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const existing = loadActionPlan();
     setPlan(existing);
-    if (existing) setRoleId(existing.roleId);
+    if (existing) {
+      setRoleId(existing.roleId);
+      setDraftTaskIds(getActionPlanWorkTaskIds(existing.roleId));
+    }
   }, []);
 
   const completedCount = useMemo(
@@ -99,7 +104,9 @@ export default function PlanPage() {
                   <h2>{task.title}</h2>
                   <p>{task.detail}</p>
                 </div>
-                {task.href && <Link href={task.href} className={styles.taskLink}>開始</Link>}
+                <Link href={`/plan/task/${task.day}`} className={styles.taskLink}>
+                  {task.completedAt ? '查看成果' : draftTaskIds.has(task.id) ? '繼續完成' : '開始任務'}
+                </Link>
               </li>
             ))}
           </ol>

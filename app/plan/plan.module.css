@@ -18,7 +18,7 @@
 .taskCopy p { color: var(--ink-2); font-size: .8125rem; line-height: 1.55; }
 .taskDone .taskCopy { opacity: .72; }
 .taskDone .taskCopy h2 { text-decoration: line-through; }
-.taskLink { color: var(--brand-dark); font-size: .8125rem; font-weight: 800; text-decoration: none; padding: 8px; }
+.taskLink { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand-dark); background: var(--sky-soft); border: 1px solid var(--line); border-radius: 8px; font-size: .8125rem; font-weight: 800; text-decoration: none; padding: 8px 12px; white-space: nowrap; }
 .completeBand { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding: 18px; border: 2px solid var(--mint); border-radius: var(--radius); background: var(--mint-soft); }
 .completeBand div { flex: 1; }
 .completeBand h2 { font-size: 1rem; margin-bottom: 4px; }

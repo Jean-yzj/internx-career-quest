@@ -48,6 +48,7 @@
 - `/island`：依年級、履歷、社團、投遞與目標職位產生個人關卡線。
 - 關卡有點數、等級、連續天數、徽章、階段資源與公會入口。
 - `/plan`：依目標職位、最近履歷缺口與作品建議產生 7 個可執行任務；完成狀態存在 `action-plan.v1`。
+- `/plan/task/[day]`：7 個任務都有專屬工作台，涵蓋職位觀察、STAR 經歷、能力證據、小作品規劃、履歷句子、三職缺比較與週回顧；草稿即時存在 `action-plan-work.v1`，不是只連到泛用頁面。
 
 ### 3.4 投遞戰情室
 
@@ -92,6 +93,7 @@
 | `profile.v1` | localStorage | 角色、年級、經歷、目標職位、device ID、引繼碼 |
 | `warroom.v1` | localStorage | 所有投遞卡、JD、面試、截止日與備註 |
 | `action-plan.v1` | localStorage | 7 天計畫與完成狀態 |
+| `action-plan-work.v1` | localStorage | 7 天任務工作台草稿與產出物 |
 | `guild.deviceId` | localStorage | 未建立 Profile 前的匿名裝置 ID |
 | `profiles` | PostgreSQL | 公開 Profile 摘要、點數、引繼碼、Google ID、Email |
 | `guild_members/posts/reports` | PostgreSQL | 公會加入、貼文、回覆與檢舉 |
@@ -122,11 +124,12 @@ Google 登入全部存在才啟用：
 本次 release candidate 已通過：
 
 - `npx tsc --noEmit`：PASS
-- `npm run build`：PASS，42 個頁面成功產出
+- `npm run build`：PASS，46 個頁面成功產出
 - `node scripts/verify.mjs`：8 PASS / 0 FAIL
 - `node scripts/verify-questline.mjs`：33 PASS / 0 FAIL
 - `node scripts/verify-resources.mjs`：12 PASS / 0 FAIL
 - Playwright/Chrome：角色頁建立計畫 -> `/plan` -> 完成任務 -> reload，狀態保留
+- Playwright/Chrome：7 個任務工作台逐頁可達；Day 1 草稿重整保留、Day 5 產出履歷句子、Day 6 從職缺 API 加入三筆比較並完成
 - 390x844：計畫、角色頁、戰情室 drawer 均無頁面級水平溢位
 - 戰情室：未來 30 天的面試不會被誤算成本週面試
 - 履歷配對：測試資料顯示 72% 與三項優先行動

@@ -107,6 +107,7 @@ export function buildActionPlan(roleId: RoleId, quest: QuestData, previous?: Act
         id,
         day: index + 1,
         ...definition,
+        href: `/plan/task/${index + 1}`,
         completedAt: completed.get(id) ?? null,
       };
     }),
@@ -125,6 +126,17 @@ export function toggleActionPlanTask(taskId: string): ActionPlan | null {
   const task = plan.tasks.find((item) => item.id === taskId);
   if (!task) return plan;
   task.completedAt = task.completedAt ? null : new Date().toISOString();
+  plan.updatedAt = new Date().toISOString();
+  saveActionPlan(plan);
+  return plan;
+}
+
+export function setActionPlanTaskCompleted(taskId: string, completed: boolean): ActionPlan | null {
+  const plan = loadActionPlan();
+  if (!plan) return null;
+  const task = plan.tasks.find((item) => item.id === taskId);
+  if (!task) return plan;
+  task.completedAt = completed ? (task.completedAt ?? new Date().toISOString()) : null;
   plan.updatedAt = new Date().toISOString();
   saveActionPlan(plan);
   return plan;
