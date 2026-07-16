@@ -66,6 +66,13 @@ export async function initProfileDb(): Promise<void> {
         updated_at timestamptz NOT NULL DEFAULT now()
       )
     `);
+
+    // 冪等遷移：確保登入相關欄位/索引存在（不論此表何時建立、是否早於 google_id 欄位）
+    await client.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS google_id text`);
+    await client.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email text`);
+    await client.query(
+      `CREATE INDEX IF NOT EXISTS idx_profiles_google_id ON profiles(google_id) WHERE google_id IS NOT NULL`
+    );
   } finally {
     client.release();
   }

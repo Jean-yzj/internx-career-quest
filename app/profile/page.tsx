@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import Avatar from '@/components/Avatar';
 import type { AvatarId } from '@/components/Avatar';
 import Mascot from '@/components/Mascot';
+import GoogleLoginButton from '@/components/GoogleLoginButton';
 import { loadQuest } from '@/lib/quest-store';
 import { getLevel, BADGES, LEVEL_NAMES } from '@/lib/quest-store';
 import { getProfile, saveProfile, getOrCreateDeviceId, type Profile } from '@/lib/profile';
@@ -415,6 +416,9 @@ export default function ProfilePage() {
                 </>
               )}
             </div>
+
+            {/* Google 帳號綁定（未設定 Google 環境變數時整列自動隱藏） */}
+            <GoogleLoginButton rowClass={styles.settingRow} labelClass={styles.settingLabel} />
 
             {/* Transfer code */}
             {profile?.transferCode && profile.transferCode !== 'LOCAL-ONLY' && (
