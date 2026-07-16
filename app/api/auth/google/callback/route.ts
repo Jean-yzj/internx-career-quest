@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isGoogleAuthEnabled, exchangeCodeForIdentity, resolveRedirectUri } from '@/lib/google-auth';
+import { isGoogleAuthEnabled, exchangeCodeForIdentity, resolveRedirectUri, resolvePublicOrigin } from '@/lib/google-auth';
 import { signToken, verifyToken } from '@/lib/session';
 import { isDbAvailable, getPool, initProfileDb } from '@/lib/db';
 
 const SESSION_MAX_AGE = 180 * 24 * 3600; // 180 天
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  const origin = resolvePublicOrigin(
+    req.nextUrl.origin,
+    req.headers.get('x-forwarded-host'),
+    req.headers.get('x-forwarded-proto')
+  );
   const back = (q: string) => NextResponse.redirect(new URL(`/profile?login=${q}`, origin));
 
   if (!isGoogleAuthEnabled()) return NextResponse.redirect(new URL('/profile', origin));
@@ -75,7 +79,7 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.redirect(new URL('/profile?login=ok', origin));
   res.cookies.set('icq_session', session, {
     httpOnly: true,
-    secure: url.protocol === 'https:',
+    secure: origin.startsWith('https'),
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE,

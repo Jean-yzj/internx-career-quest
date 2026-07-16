@@ -18,6 +18,31 @@ export function resolveRedirectUri(origin: string): string {
   return process.env.GOOGLE_REDIRECT_URI || `${origin}/api/auth/google/callback`;
 }
 
+/**
+ * 解析對外可見的 origin，供所有跳轉使用。
+ * Zeabur/Cloudflare 代理下 req.nextUrl.origin 會是容器內部的 http://localhost:8080，
+ * 直接拿來組跳轉會把使用者導去 localhost。優先序：
+ *   1) GOOGLE_REDIRECT_URI 的 origin（單一事實來源；啟用登入時本來就要設）
+ *   2) proxy 轉發標頭 x-forwarded-host / x-forwarded-proto
+ *   3) 請求本身的 origin（保底）
+ */
+export function resolvePublicOrigin(
+  reqOrigin: string,
+  forwardedHost?: string | null,
+  forwardedProto?: string | null
+): string {
+  const rd = process.env.GOOGLE_REDIRECT_URI;
+  if (rd) {
+    try {
+      return new URL(rd).origin;
+    } catch {
+      /* malformed env, fall through */
+    }
+  }
+  if (forwardedHost) return `${forwardedProto || 'https'}://${forwardedHost}`;
+  return reqOrigin;
+}
+
 export function buildAuthUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || '',
